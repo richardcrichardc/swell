@@ -7,6 +7,10 @@ const app = express()
 const PORT = 3001
 
 app.use(cors({ origin: 'http://localhost:5173' }))
+app.use((req, _res, next) => {
+  console.log(`${req.method} ${req.url}`)
+  next()
+})
 
 app.use(
   '/trpc',
