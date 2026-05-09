@@ -15,7 +15,7 @@ function renderApp(initialPath = '/') {
 describe('App', () => {
   it('renders the home page', () => {
     renderApp()
-    expect(screen.getByText('Swell')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Swell' })).toBeInTheDocument()
   })
 
   it('renders the 404 page for unknown routes', () => {
