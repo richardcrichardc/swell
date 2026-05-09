@@ -4,7 +4,9 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently -n client,server -c blue,green \"vite\" \"tsx watch server/src/index.ts\"",
+    "dev:client": "vite",
+    "dev:server": "tsx watch server/src/index.ts",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest",
@@ -15,12 +17,23 @@
     "format:check": "prettier --check ."
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.62.0",
+    "@trpc/client": "^11.0.0",
+    "@trpc/react-query": "^11.0.0",
+    "@trpc/server": "^11.0.0",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^7.1.0",
+    "zod": "^3.24.0",
     "zustand": "^5.0.2"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "concurrently": "^9.1.0",
+    "tsx": "^4.19.2",
     "@eslint/js": "^9.17.0",
     "@tailwindcss/vite": "^4.0.0",
     "@testing-library/jest-dom": "^6.6.3",
