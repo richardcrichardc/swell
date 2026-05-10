@@ -34,7 +34,7 @@ function mockMutation(overrides: { isPending?: boolean; error?: Error | null } =
   const mutate = vi.fn()
   vi.mocked(trpc.login.useMutation).mockImplementation((options) => {
     mutate.mockImplementation((input: { email: string; password: string }) => {
-      options?.onSuccess?.({ user: { email: input.email, name: input.email.split('@')[0] } })
+      options?.onSuccess?.({ user: { email: input.email, name: input.email.split('@')[0] }, token: 'mock-token' })
     })
     return { mutate, isPending: false, error: null, ...overrides } as ReturnType<
       typeof trpc.login.useMutation
@@ -45,7 +45,7 @@ function mockMutation(overrides: { isPending?: boolean; error?: Error | null } =
 
 beforeEach(() => {
   vi.clearAllMocks()
-  useAuthStore.setState({ user: null })
+  useAuthStore.setState({ user: null, token: null })
   localStorage.clear()
 })
 
@@ -80,6 +80,7 @@ describe('LoginPage', () => {
     await user.click(screen.getByRole('button', { name: 'Sign in' }))
 
     expect(useAuthStore.getState().user).toEqual({ email: 'test@example.com', name: 'test' })
+    expect(useAuthStore.getState().token).toBe('mock-token')
     expect(mockNavigate).toHaveBeenCalledWith('/')
   })
 

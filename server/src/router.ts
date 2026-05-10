@@ -1,16 +1,17 @@
 import { z } from 'zod'
 import { eq } from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
-import { router, publicProcedure } from './trpc'
+import { router, publicProcedure, protectedProcedure } from './trpc'
 import { users } from './db/schema'
 import { hashPassword, verifyPassword } from './password'
+import { signToken } from './token'
 
 export const appRouter = router({
   health: publicProcedure.query(() => ({ status: 'ok' })),
 
-  greeting: publicProcedure
-    .input(z.object({ name: z.string() }))
-    .query(({ input }) => `Hello, ${input.name}!`),
+  me: protectedProcedure.query(({ ctx }) => ({
+    user: { email: ctx.user.email, name: ctx.user.name },
+  })),
 
   login: publicProcedure
     .input(z.object({ email: z.string().email(), password: z.string().min(1) }))
@@ -23,7 +24,8 @@ export const appRouter = router({
         throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid email or password' })
       }
 
-      return { user: { email: user.email, name: user.name } }
+      const token = await signToken({ userId: user.id, email: user.email, name: user.name })
+      return { user: { email: user.email, name: user.name }, token }
     }),
 
   register: publicProcedure
@@ -48,7 +50,8 @@ export const appRouter = router({
         .returning()
         .get()
 
-      return { user: { email: user.email, name: user.name } }
+      const token = await signToken({ userId: user.id, email: user.email, name: user.name })
+      return { user: { email: user.email, name: user.name }, token }
     }),
 })
 

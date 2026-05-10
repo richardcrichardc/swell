@@ -7,12 +7,12 @@ import Button from '../components/ui/Button'
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const setUser = useAuthStore((s) => s.setUser)
+  const setAuth = useAuthStore((s) => s.setAuth)
   const navigate = useNavigate()
 
   const login = trpc.login.useMutation({
-    onSuccess: ({ user }) => {
-      setUser(user)
+    onSuccess: ({ user, token }) => {
+      setAuth(user, token)
       void navigate('/')
     },
   })

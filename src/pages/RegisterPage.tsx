@@ -8,12 +8,12 @@ export default function RegisterPage() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const setUser = useAuthStore((s) => s.setUser)
+  const setAuth = useAuthStore((s) => s.setAuth)
   const navigate = useNavigate()
 
   const register = trpc.register.useMutation({
-    onSuccess: ({ user }) => {
-      setUser(user)
+    onSuccess: ({ user, token }) => {
+      setAuth(user, token)
       void navigate('/')
     },
   })

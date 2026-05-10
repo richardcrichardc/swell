@@ -34,7 +34,7 @@ function mockMutation(overrides: { isPending?: boolean; error?: Error | null } =
   const mutate = vi.fn()
   vi.mocked(trpc.register.useMutation).mockImplementation((options) => {
     mutate.mockImplementation((input: { name: string; email: string; password: string }) => {
-      options?.onSuccess?.({ user: { email: input.email, name: input.name } })
+      options?.onSuccess?.({ user: { email: input.email, name: input.name }, token: 'mock-token' })
     })
     return { mutate, isPending: false, error: null, ...overrides } as ReturnType<
       typeof trpc.register.useMutation
@@ -45,7 +45,7 @@ function mockMutation(overrides: { isPending?: boolean; error?: Error | null } =
 
 beforeEach(() => {
   vi.clearAllMocks()
-  useAuthStore.setState({ user: null })
+  useAuthStore.setState({ user: null, token: null })
   localStorage.clear()
 })
 
@@ -83,6 +83,7 @@ describe('RegisterPage', () => {
     await user.click(screen.getByRole('button', { name: 'Create account' }))
 
     expect(useAuthStore.getState().user).toEqual({ email: 'jane@example.com', name: 'Jane Smith' })
+    expect(useAuthStore.getState().token).toBe('mock-token')
     expect(mockNavigate).toHaveBeenCalledWith('/')
   })
 

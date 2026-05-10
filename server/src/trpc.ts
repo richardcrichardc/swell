@@ -1,9 +1,17 @@
-import { initTRPC } from '@trpc/server'
+import { initTRPC, TRPCError } from '@trpc/server'
+import type { CreateExpressContextOptions } from '@trpc/server/adapters/express'
 import { ZodError } from 'zod'
 import { db } from './db'
+import { verifyToken } from './token'
 
-export const createContext = () => ({ db })
-export type Context = ReturnType<typeof createContext>
+export const createContext = async ({ req }: CreateExpressContextOptions) => {
+  const authHeader = req.headers.authorization
+  const rawToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
+  const user = rawToken ? await verifyToken(rawToken) : null
+  return { db, user }
+}
+
+export type Context = Awaited<ReturnType<typeof createContext>>
 
 const t = initTRPC.context<Context>().create({
   errorFormatter: ({ shape, error }) => ({
@@ -15,5 +23,13 @@ const t = initTRPC.context<Context>().create({
   }),
 })
 
+const isAuthed = t.middleware(({ ctx, next }) => {
+  if (!ctx.user) {
+    throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Not authenticated' })
+  }
+  return next({ ctx: { ...ctx, user: ctx.user } })
+})
+
 export const router = t.router
 export const publicProcedure = t.procedure
+export const protectedProcedure = t.procedure.use(isAuthed)
