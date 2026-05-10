@@ -7,7 +7,7 @@ export default function Nav() {
 
   const handleLogout = () => {
     logout()
-    navigate('/')
+    void navigate('/')
   }
 
   return (

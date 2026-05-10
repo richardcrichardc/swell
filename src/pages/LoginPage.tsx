@@ -13,7 +13,7 @@ export default function LoginPage() {
   const login = trpc.login.useMutation({
     onSuccess: ({ user }) => {
       setUser(user)
-      navigate('/')
+      void navigate('/')
     },
   })
 

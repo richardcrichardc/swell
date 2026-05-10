@@ -89,9 +89,15 @@ describe('LoginPage', () => {
     expect(screen.getByRole('button', { name: 'Signing in…' })).toBeDisabled()
   })
 
-  it('shows error message on failure', () => {
-    mockMutation({ error: new Error('Invalid credentials') })
+  it('shows the error message returned by the server', () => {
+    mockMutation({ error: new Error('Invalid email or password') })
     renderPage()
-    expect(screen.getByText('Invalid credentials')).toBeInTheDocument()
+    expect(screen.getByText('Invalid email or password')).toBeInTheDocument()
+  })
+
+  it('shows a clean message for validation errors', () => {
+    mockMutation({ error: new Error('Invalid email') })
+    renderPage()
+    expect(screen.getByText('Invalid email')).toBeInTheDocument()
   })
 })

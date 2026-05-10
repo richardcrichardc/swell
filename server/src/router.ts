@@ -13,8 +13,8 @@ export const appRouter = router({
 
   login: publicProcedure
     .input(z.object({ email: z.string().email(), password: z.string().min(1) }))
-    .mutation(({ input, ctx }) => {
-      const user = ctx.db.query.users.findFirst({
+    .mutation(async ({ input, ctx }) => {
+      const user = await ctx.db.query.users.findFirst({
         where: eq(users.email, input.email),
       })
 
