@@ -18,10 +18,12 @@ function createCaller({
   existingUser,
   insertedUser,
   ctxUser,
+  existingBooks,
 }: {
   existingUser?: object
   insertedUser?: object
   ctxUser?: object
+  existingBooks?: object[]
 } = {}) {
   const get = vi.fn().mockReturnValue(insertedUser)
   const returning = vi.fn().mockReturnValue({ get })
@@ -30,6 +32,9 @@ function createCaller({
       query: {
         users: {
           findFirst: vi.fn().mockResolvedValue(existingUser),
+        },
+        books: {
+          findMany: vi.fn().mockResolvedValue(existingBooks ?? []),
         },
       },
       insert: vi.fn().mockReturnValue({
@@ -91,5 +96,43 @@ describe('register', () => {
     await expect(
       caller.register({ name: 'Someone', email: 'taken@example.com', password: 'password123' }),
     ).rejects.toMatchObject({ code: 'CONFLICT', message: 'An account with that email already exists' })
+  })
+})
+
+describe('books.list', () => {
+  it('returns the users books', async () => {
+    const caller = createCaller({
+      ctxUser: { userId: 1, email: 'test@example.com', name: 'test' },
+      existingBooks: [
+        { id: 1, name: 'Personal', userId: 1 },
+        { id: 2, name: 'Business', userId: 1 },
+      ],
+    })
+    const result = await caller.books.list()
+    expect(result).toEqual([
+      { id: 1, name: 'Personal' },
+      { id: 2, name: 'Business' },
+    ])
+  })
+
+  it('throws UNAUTHORIZED when not authenticated', async () => {
+    const caller = createCaller()
+    await expect(caller.books.list()).rejects.toMatchObject({ code: 'UNAUTHORIZED' })
+  })
+})
+
+describe('books.create', () => {
+  it('creates a book and returns it', async () => {
+    const caller = createCaller({
+      ctxUser: { userId: 1, email: 'test@example.com', name: 'test' },
+      insertedUser: { id: 3, name: 'New Book', userId: 1 },
+    })
+    const result = await caller.books.create({ name: 'New Book' })
+    expect(result).toEqual({ id: 3, name: 'New Book' })
+  })
+
+  it('throws UNAUTHORIZED when not authenticated', async () => {
+    const caller = createCaller()
+    await expect(caller.books.create({ name: 'New Book' })).rejects.toMatchObject({ code: 'UNAUTHORIZED' })
   })
 })

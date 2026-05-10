@@ -10,3 +10,14 @@ export const users = sqliteTable('users', {
     .notNull()
     .default(sql`(unixepoch())`),
 })
+
+export const books = sqliteTable('books', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  name: text('name').notNull(),
+  userId: integer('user_id')
+    .notNull()
+    .references(() => users.id),
+  createdAt: integer('created_at', { mode: 'timestamp' })
+    .notNull()
+    .default(sql`(unixepoch())`),
+})
