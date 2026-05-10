@@ -1,5 +1,8 @@
 import { z } from 'zod'
+import { eq } from 'drizzle-orm'
+import { TRPCError } from '@trpc/server'
 import { router, publicProcedure } from './trpc'
+import { users } from './db/schema'
 
 export const appRouter = router({
   health: publicProcedure.query(() => ({ status: 'ok' })),
@@ -10,12 +13,17 @@ export const appRouter = router({
 
   login: publicProcedure
     .input(z.object({ email: z.string().email(), password: z.string().min(1) }))
-    .mutation(({ input }) => ({
-      user: {
-        email: input.email,
-        name: input.email.split('@')[0],
-      },
-    })),
+    .mutation(({ input, ctx }) => {
+      const user = ctx.db.query.users.findFirst({
+        where: eq(users.email, input.email),
+      })
+
+      if (!user) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid email or password' })
+      }
+
+      return { user: { email: user.email, name: user.name } }
+    }),
 })
 
 export type AppRouter = typeof appRouter
