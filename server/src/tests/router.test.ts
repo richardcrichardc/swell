@@ -2,6 +2,13 @@
 import { describe, it, expect, vi } from 'vitest'
 import { appRouter } from '../router'
 
+vi.mock('../password', () => ({
+  hashPassword: vi.fn().mockResolvedValue('hashed'),
+  verifyPassword: vi.fn().mockResolvedValue(true),
+}))
+
+import { verifyPassword } from '../password'
+
 function createCaller({
   existingUser,
   insertedUser,
@@ -34,8 +41,16 @@ describe('login', () => {
     ).rejects.toMatchObject({ code: 'UNAUTHORIZED', message: 'Invalid email or password' })
   })
 
-  it('returns user when found', async () => {
-    const caller = createCaller({ existingUser: { email: 'test@example.com', name: 'test' } })
+  it('throws UNAUTHORIZED when password is wrong', async () => {
+    vi.mocked(verifyPassword).mockResolvedValueOnce(false)
+    const caller = createCaller({ existingUser: { email: 'test@example.com', name: 'test', passwordHash: 'hashed' } })
+    await expect(
+      caller.login({ email: 'test@example.com', password: 'wrongpassword' }),
+    ).rejects.toMatchObject({ code: 'UNAUTHORIZED', message: 'Invalid email or password' })
+  })
+
+  it('returns user when credentials are correct', async () => {
+    const caller = createCaller({ existingUser: { email: 'test@example.com', name: 'test', passwordHash: 'hashed' } })
     const result = await caller.login({ email: 'test@example.com', password: 'password123' })
     expect(result.user).toEqual({ email: 'test@example.com', name: 'test' })
   })
@@ -49,7 +64,7 @@ describe('register', () => {
   })
 
   it('throws CONFLICT when email is already registered', async () => {
-    const caller = createCaller({ existingUser: { email: 'taken@example.com', name: 'Existing' } })
+    const caller = createCaller({ existingUser: { email: 'taken@example.com', name: 'Existing', passwordHash: 'hashed' } })
     await expect(
       caller.register({ name: 'Someone', email: 'taken@example.com', password: 'password123' }),
     ).rejects.toMatchObject({ code: 'CONFLICT', message: 'An account with that email already exists' })

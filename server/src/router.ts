@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
 import { router, publicProcedure } from './trpc'
 import { users } from './db/schema'
+import { hashPassword, verifyPassword } from './password'
 
 export const appRouter = router({
   health: publicProcedure.query(() => ({ status: 'ok' })),
@@ -18,7 +19,7 @@ export const appRouter = router({
         where: eq(users.email, input.email),
       })
 
-      if (!user) {
+      if (!user || !(await verifyPassword(input.password, user.passwordHash))) {
         throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid email or password' })
       }
 
@@ -40,8 +41,10 @@ export const appRouter = router({
         throw new TRPCError({ code: 'CONFLICT', message: 'An account with that email already exists' })
       }
 
+      const passwordHash = await hashPassword(input.password)
+
       const user = ctx.db.insert(users)
-        .values({ email: input.email, name: input.name })
+        .values({ email: input.email, name: input.name, passwordHash })
         .returning()
         .get()
 
