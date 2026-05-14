@@ -3,6 +3,7 @@ import { eq, asc, and } from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
 import { router, protectedProcedure } from './trpc'
 import { books } from './db/schema'
+import { getBookDb, kvp } from './db/bookDb'
 
 export const booksRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
@@ -22,7 +23,9 @@ export const booksRouter = router({
       if (!book) {
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Book not found' })
       }
-      return { id: book.id, name: book.name }
+      const bookDb = getBookDb(book.id)
+      const descriptionRow = await bookDb.query.kvp.findFirst({ where: eq(kvp.key, 'description') })
+      return { id: book.id, name: book.name, description: descriptionRow?.value ?? null }
     }),
 
   create: protectedProcedure

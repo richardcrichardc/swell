@@ -30,6 +30,7 @@ export default function BookPage() {
         ← Books
       </Link>
       <h1 className="mt-4 text-3xl font-bold tracking-tight text-gray-900">{book.name}</h1>
+      <p className="mt-4 text-gray-600">{book.description ?? 'No description.'}</p>
     </main>
   )
 }

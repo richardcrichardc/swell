@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi, beforeEach, describe, it, expect } from 'vitest'
+import { MemoryRouter } from 'react-router-dom'
 import HomePage from '../pages/HomePage'
 import { useAuthStore } from '../store/useAuthStore'
 
@@ -48,7 +49,7 @@ beforeEach(() => {
 
 describe('HomePage (logged out)', () => {
   it('shows the landing page', () => {
-    render(<HomePage />)
+    render(<MemoryRouter><HomePage /></MemoryRouter>)
     expect(screen.getByRole('heading', { name: 'Swell Accounting' })).toBeInTheDocument()
   })
 })
@@ -60,27 +61,27 @@ describe('HomePage (logged in)', () => {
 
   it('shows the books heading', () => {
     mockBooks()
-    render(<HomePage />)
+    render(<MemoryRouter><HomePage /></MemoryRouter>)
     expect(screen.getByRole('heading', { name: 'Your Books' })).toBeInTheDocument()
   })
 
   it('lists existing books', () => {
     mockBooks([{ id: 1, name: 'Personal' }, { id: 2, name: 'Business' }])
-    render(<HomePage />)
+    render(<MemoryRouter><HomePage /></MemoryRouter>)
     expect(screen.getByText('Personal')).toBeInTheDocument()
     expect(screen.getByText('Business')).toBeInTheDocument()
   })
 
   it('shows empty state when no books', () => {
     mockBooks([])
-    render(<HomePage />)
+    render(<MemoryRouter><HomePage /></MemoryRouter>)
     expect(screen.getByText('No books yet. Add one above.')).toBeInTheDocument()
   })
 
   it('calls create mutation with the book name', async () => {
     const user = userEvent.setup()
     const mutate = mockBooks()
-    render(<HomePage />)
+    render(<MemoryRouter><HomePage /></MemoryRouter>)
 
     await user.type(screen.getByPlaceholderText('Book name'), 'My New Book')
     await user.click(screen.getByRole('button', { name: 'Add book' }))
@@ -90,7 +91,7 @@ describe('HomePage (logged in)', () => {
 
   it('shows loading state while creating', () => {
     mockBooks([], { isPending: true })
-    render(<HomePage />)
+    render(<MemoryRouter><HomePage /></MemoryRouter>)
     expect(screen.getByRole('button', { name: 'Adding…' })).toBeDisabled()
   })
 })
