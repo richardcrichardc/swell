@@ -6,7 +6,7 @@ import { books } from './db/schema'
 export const booksRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
     const userBooks = await ctx.db.query.books.findMany({
-      where: eq(books.userId, ctx.user.userId),
+      where: eq(books.userId, ctx.user.id),
       orderBy: [asc(books.createdAt)],
     })
     return userBooks.map((b) => ({ id: b.id, name: b.name }))
@@ -17,7 +17,7 @@ export const booksRouter = router({
     .mutation(({ input, ctx }) => {
       const book = ctx.db
         .insert(books)
-        .values({ name: input.name, userId: ctx.user.userId })
+        .values({ name: input.name, userId: ctx.user.id })
         .returning()
         .get()
       return { id: book.id, name: book.name }

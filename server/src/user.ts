@@ -28,7 +28,7 @@ export async function loginUser(db: Db, input: { email: string; password: string
   if (!user || !(await verifyPassword(input.password, user.passwordHash))) {
     throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid email or password' })
   }
-  const token = await signToken({ userId: user.id, email: user.email, name: user.name })
+  const token = await signToken({ userId: user.id })
   return { user: { email: user.email, name: user.name }, token }
 }
 
@@ -39,6 +39,6 @@ export async function registerUser(db: Db, input: { name: string; email: string;
   }
   const passwordHash = await hashPassword(input.password)
   const user = db.insert(users).values({ email: input.email, name: input.name, passwordHash }).returning().get()
-  const token = await signToken({ userId: user.id, email: user.email, name: user.name })
+  const token = await signToken({ userId: user.id })
   return { user: { email: user.email, name: user.name }, token }
 }

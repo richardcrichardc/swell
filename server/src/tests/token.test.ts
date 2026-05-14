@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest'
 import { signToken, verifyToken } from '../token'
 
-const payload = { userId: 1, email: 'test@example.com', name: 'test' }
+const payload = { userId: 1 }
 
 describe('token', () => {
   it('signs and verifies a valid token', async () => {

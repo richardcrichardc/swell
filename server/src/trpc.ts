@@ -1,13 +1,18 @@
 import { initTRPC, TRPCError } from '@trpc/server'
 import type { CreateExpressContextOptions } from '@trpc/server/adapters/express'
 import { ZodError } from 'zod'
+import { eq } from 'drizzle-orm'
 import { db } from './db'
+import { users } from './db/schema'
 import { verifyToken } from './token'
 
 export const createContext = async ({ req }: CreateExpressContextOptions) => {
   const authHeader = req.headers.authorization
   const rawToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null
-  const user = rawToken ? await verifyToken(rawToken) : null
+  const payload = rawToken ? await verifyToken(rawToken) : null
+  const user = payload
+    ? (await db.query.users.findFirst({ where: eq(users.id, payload.userId) })) ?? null
+    : null
   return { db, user }
 }
 

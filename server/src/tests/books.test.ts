@@ -32,7 +32,7 @@ function createCaller({
 describe('books.list', () => {
   it('returns the users books', async () => {
     const caller = createCaller({
-      ctxUser: { userId: 1, email: 'test@example.com', name: 'test' },
+      ctxUser: { id: 1, email: 'test@example.com', name: 'test' },
       existingBooks: [
         { id: 1, name: 'Personal', userId: 1 },
         { id: 2, name: 'Business', userId: 1 },
@@ -54,7 +54,7 @@ describe('books.list', () => {
 describe('books.create', () => {
   it('creates a book and returns it', async () => {
     const caller = createCaller({
-      ctxUser: { userId: 1, email: 'test@example.com', name: 'test' },
+      ctxUser: { id: 1, email: 'test@example.com', name: 'test' },
       insertedBook: { id: 3, name: 'New Book', userId: 1 },
     })
     const result = await caller.create({ name: 'New Book' })
