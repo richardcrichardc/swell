@@ -8,7 +8,7 @@ export const trpc = createTRPCReact<AppRouter>()
 export const trpcClient = trpc.createClient({
   links: [
     httpBatchLink({
-      url: import.meta.env.PROD ? '/trpc' : 'http://localhost:3001/trpc',
+      url: '/trpc',
       headers: () => {
         const token = useAuthStore.getState().token
         return token ? { Authorization: `Bearer ${token}` } : {}
