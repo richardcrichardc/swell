@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuthStore } from '../store/useAuthStore'
 import { trpc } from '../lib/trpc'
 
@@ -76,8 +77,10 @@ function BooksView() {
           <li className="px-4 py-3 text-sm text-gray-500">No books yet. Add one above.</li>
         )}
         {books?.map((book) => (
-          <li key={book.id} className="px-4 py-3 text-sm text-gray-900">
-            {book.name}
+          <li key={book.id} className="px-4 py-3 text-sm">
+            <Link to={`/books/${book.id}`} className="text-gray-900 hover:text-blue-600">
+              {book.name}
+            </Link>
           </li>
         ))}
       </ul>
