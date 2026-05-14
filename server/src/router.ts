@@ -1,10 +1,8 @@
 import { z } from 'zod'
 import { eq, asc } from 'drizzle-orm'
-import { TRPCError } from '@trpc/server'
 import { router, publicProcedure, protectedProcedure } from './trpc'
-import { users, books } from './db/schema'
-import { hashPassword, verifyPassword } from './password'
-import { signToken } from './token'
+import { books } from './db/schema'
+import { loginUser, registerUser } from './user'
 
 export const appRouter = router({
   health: publicProcedure.query(() => ({ status: 'ok' })),
@@ -15,18 +13,7 @@ export const appRouter = router({
 
   login: publicProcedure
     .input(z.object({ email: z.string().email(), password: z.string().min(1) }))
-    .mutation(async ({ input, ctx }) => {
-      const user = await ctx.db.query.users.findFirst({
-        where: eq(users.email, input.email),
-      })
-
-      if (!user || !(await verifyPassword(input.password, user.passwordHash))) {
-        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid email or password' })
-      }
-
-      const token = await signToken({ userId: user.id, email: user.email, name: user.name })
-      return { user: { email: user.email, name: user.name }, token }
-    }),
+    .mutation(({ input, ctx }) => loginUser(ctx.db, input)),
 
   register: publicProcedure
     .input(z.object({
@@ -34,25 +21,7 @@ export const appRouter = router({
       email: z.string().email(),
       password: z.string().min(8, 'Password must be at least 8 characters'),
     }))
-    .mutation(async ({ input, ctx }) => {
-      const existing = await ctx.db.query.users.findFirst({
-        where: eq(users.email, input.email),
-      })
-
-      if (existing) {
-        throw new TRPCError({ code: 'CONFLICT', message: 'An account with that email already exists' })
-      }
-
-      const passwordHash = await hashPassword(input.password)
-
-      const user = ctx.db.insert(users)
-        .values({ email: input.email, name: input.name, passwordHash })
-        .returning()
-        .get()
-
-      const token = await signToken({ userId: user.id, email: user.email, name: user.name })
-      return { user: { email: user.email, name: user.name }, token }
-    }),
+    .mutation(({ input, ctx }) => registerUser(ctx.db, input)),
 
   books: router({
     list: protectedProcedure.query(async ({ ctx }) => {
