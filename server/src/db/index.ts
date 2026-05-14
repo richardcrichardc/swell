@@ -6,9 +6,9 @@ import { dirname, join } from 'path'
 import { fileURLToPath } from 'url'
 import * as schema from './schema'
 
-mkdirSync('./server/data', { recursive: true })
+mkdirSync('./data', { recursive: true })
 
-const sqlite = new Database('./server/data/swell.db')
+const sqlite = new Database('./data/swell.db')
 
 sqlite.pragma('journal_mode = WAL')
 sqlite.pragma('foreign_keys = ON')
