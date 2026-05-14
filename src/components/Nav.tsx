@@ -35,7 +35,7 @@ export default function Nav() {
               <span className="text-sm text-gray-600">{user.name}</span>
               <button
                 onClick={handleLogout}
-                className="text-sm font-medium text-gray-600 transition-colors hover:text-gray-900"
+                className="cursor-pointer text-sm font-medium text-gray-600 transition-colors hover:text-gray-900"
               >
                 Logout
               </button>
