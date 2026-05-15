@@ -4,20 +4,18 @@ import { booksRouter } from '../books'
 
 vi.mock('../db/bookDb', () => ({
   getBookDb: vi.fn(),
-  kvp: { key: {} },
+  getKvp: vi.fn(),
+  setKvp: vi.fn(),
 }))
 
-import { getBookDb } from '../db/bookDb'
+import { getKvp } from '../db/bookDb'
 
 function mockBookDb({ name, description }: { name?: string; description?: string } = {}) {
-  const rows = [
-    ...(name != null ? [{ key: 'name', value: name }] : []),
-    ...(description != null ? [{ key: 'description', value: description }] : []),
-  ]
-  vi.mocked(getBookDb).mockReturnValue({
-    query: { kvp: { findMany: vi.fn().mockResolvedValue(rows) } },
-    insert: vi.fn().mockReturnValue({ values: vi.fn().mockReturnValue({ run: vi.fn() }) }),
-  } as any)
+  vi.mocked(getKvp).mockImplementation((_db, key) => {
+    if (key === 'name') return name ?? null
+    if (key === 'description') return description ?? null
+    return null
+  })
 }
 
 function createCaller({

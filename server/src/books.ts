@@ -1,9 +1,9 @@
 import { z } from 'zod'
-import { eq, asc, and, inArray } from 'drizzle-orm'
+import { eq, asc, and } from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
 import { router, protectedProcedure } from './trpc'
 import { books } from './db/schema'
-import { getBookDb, kvp } from './db/bookDb'
+import { getBookDb, getKvp, setKvp } from './db/bookDb'
 
 export const booksRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
@@ -24,9 +24,9 @@ export const booksRouter = router({
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Book not found' })
       }
       const bookDb = getBookDb(book.id)
-      const kvpRows = await bookDb.query.kvp.findMany({ where: inArray(kvp.key, ['name', 'description']) })
-      const kvpMap = Object.fromEntries(kvpRows.map((r) => [r.key, r.value]))
-      return { id: book.id, name: kvpMap.name ?? null, description: kvpMap.description ?? null }
+      const name = getKvp(bookDb, 'name')
+      const description = getKvp(bookDb, 'description')
+      return { id: book.id, name, description }
     }),
 
   setDescription: protectedProcedure
@@ -38,12 +38,7 @@ export const booksRouter = router({
       if (!book) {
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Book not found' })
       }
-      const bookDb = getBookDb(book.id)
-      bookDb
-        .insert(kvp)
-        .values({ key: 'description', value: input.description })
-        .onConflictDoUpdate({ target: kvp.key, set: { value: input.description } })
-        .run()
+      setKvp(getBookDb(book.id), 'description', input.description)
     }),
 
   create: protectedProcedure
@@ -54,8 +49,7 @@ export const booksRouter = router({
         .values({ name: input.name, userId: ctx.user.id })
         .returning()
         .get()
-      const bookDb = getBookDb(book.id)
-      bookDb.insert(kvp).values({ key: 'name', value: input.name }).run()
+      setKvp(getBookDb(book.id), 'name', input.name)
       return { id: book.id, name: book.name }
     }),
 })
