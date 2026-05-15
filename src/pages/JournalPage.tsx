@@ -2,9 +2,7 @@ import { useParams } from 'react-router-dom'
 import { trpc } from '../lib/trpc'
 
 function formatAmount(cents: number): string {
-  const abs = Math.abs(cents)
-  const str = (abs / 100).toFixed(2)
-  return cents < 0 ? `(${str})` : str
+  return (cents / 100).toFixed(2)
 }
 
 export default function JournalPage() {
@@ -25,12 +23,21 @@ export default function JournalPage() {
               <span className="font-medium text-gray-900">{txn.description}</span>
             </div>
             <table className="mt-2 w-full text-sm">
+              <thead>
+                <tr className="text-right text-xs text-gray-400">
+                  <th className="pb-1 font-medium text-left"></th>
+                  <th className="pb-1 font-medium text-left"></th>
+                  <th className="pb-1 font-medium w-24">Debit</th>
+                  <th className="pb-1 font-medium w-24">Credit</th>
+                </tr>
+              </thead>
               <tbody>
                 {txn.lines.map((l) => (
                   <tr key={l.id}>
                     <td className="py-0.5 text-gray-700">{l.accountName}</td>
-                    <td className="py-0.5 text-gray-600">{l.description}</td>
-                    <td className="py-0.5 text-right tabular-nums">{formatAmount(l.amount)}</td>
+                    <td className="py-0.5 text-gray-500">{l.description}</td>
+                    <td className="py-0.5 text-right tabular-nums">{l.debit != null ? formatAmount(l.debit) : ''}</td>
+                    <td className="py-0.5 text-right tabular-nums">{l.credit != null ? formatAmount(l.credit) : ''}</td>
                   </tr>
                 ))}
               </tbody>
