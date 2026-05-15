@@ -1,6 +1,6 @@
 import { eq, and } from 'drizzle-orm'
 import { type BookDb, account, transaction, line } from './db/bookDb'
-import { AccountGroup } from './accounts'
+import { AccountGroup, AccountGroupSign } from './accounts'
 
 function parseCsvLine(csvLine: string): string[] {
   const fields: string[] = []
@@ -39,6 +39,14 @@ function parseCents(value: string): number {
   return Math.round(parseFloat(value) * 100)
 }
 
+function parseAccountGroup(value: string, rowNum: number): AccountGroup {
+  const trimmed = value.trim()
+  if (!(Object.values(AccountGroup) as string[]).includes(trimmed)) {
+    throw new Error(`Invalid account group "${trimmed}" on row ${rowNum}`)
+  }
+  return trimmed as AccountGroup
+}
+
 export function validateWaveCsv(csvContent: string): void {
   const lines = csvContent.split(/\r?\n/)
   const transactionTotals = new Map<string, number>()
@@ -48,16 +56,12 @@ export function validateWaveCsv(csvContent: string): void {
     if (!csvLine) continue
     const cols = parseCsvLine(csvLine)
 
-    const group = cols[20]?.trim() ?? ''
-    if (group && !(Object.values(AccountGroup) as string[]).includes(group)) {
-      throw new Error(`Invalid account group "${group}" on row ${i + 1}`)
-    }
-
-    const salesTaxAmount = cols[16]?.trim() ?? ''
+    const group = parseAccountGroup(cols[20]?.trim() ?? '', i + 1)
 
     const waveId = cols[0]?.trim() ?? ''
     const amount = parseCents(cols[5]?.trim() ?? '0')
-    transactionTotals.set(waveId, (transactionTotals.get(waveId) ?? 0) + amount)
+    const sign = AccountGroupSign[group]
+    transactionTotals.set(waveId, (transactionTotals.get(waveId) ?? 0) + amount * sign)
   }
 
   for (const [waveId, total] of transactionTotals) {

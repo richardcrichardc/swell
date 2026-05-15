@@ -44,11 +44,12 @@ function makeCsv(...rows: string[]): string {
 
 describe('validateWaveCsv', () => {
   it('accepts a valid CSV', () => {
-    expect(() => validateWaveCsv(makeCsv(makeRow({ waveId: 'w1', amount: '0.00' })))).not.toThrow()
+    expect(() => validateWaveCsv(makeCsv(makeRow({ waveId: 'w1', amount: '0.00', accountGroup: 'Expense' })))).not.toThrow()
   })
 
-  it('accepts empty account group', () => {
-    expect(() => validateWaveCsv(makeCsv(makeRow({ waveId: 'w1', amount: '0.00', accountGroup: '' })))).not.toThrow()
+  it('rejects an empty account group', () => {
+    expect(() => validateWaveCsv(makeCsv(makeRow({ waveId: 'w1', amount: '0.00', accountGroup: '' }))))
+      .toThrow('Invalid account group "" on row 2')
   })
 
   it('rejects an invalid account group', () => {
@@ -57,28 +58,28 @@ describe('validateWaveCsv', () => {
   })
 
   it('accepts a row with a sales tax amount', () => {
-    expect(() => validateWaveCsv(makeCsv(makeRow({ waveId: 'w1', amount: '0.00', salesTaxAmount: '1.50' })))).not.toThrow()
+    expect(() => validateWaveCsv(makeCsv(makeRow({ waveId: 'w1', amount: '0.00', accountGroup: 'Expense', salesTaxAmount: '1.50' })))).not.toThrow()
   })
 
   it('ignores blank lines', () => {
     expect(() => validateWaveCsv(makeCsv(
-      makeRow({ waveId: 'w1', amount: '0.00' }),
+      makeRow({ waveId: 'w1', amount: '0.00', accountGroup: 'Expense' }),
       '',
-      makeRow({ waveId: 'w2', amount: '0.00' }),
+      makeRow({ waveId: 'w2', amount: '0.00', accountGroup: 'Expense' }),
     ))).not.toThrow()
   })
 
   it('accepts a balanced multi-line transaction', () => {
     expect(() => validateWaveCsv(makeCsv(
-      makeRow({ waveId: 'w1', amount: '500.00' }),
-      makeRow({ waveId: 'w1', amount: '-500.00' }),
+      makeRow({ waveId: 'w1', amount: '1.00', accountGroup: 'Asset' }),
+      makeRow({ waveId: 'w1', amount: '1.00', accountGroup: 'Equity' }),
     ))).not.toThrow()
   })
 
   it('rejects an unbalanced transaction', () => {
     expect(() => validateWaveCsv(makeCsv(
-      makeRow({ waveId: 'w1', amount: '500.00' }),
-      makeRow({ waveId: 'w1', amount: '-400.00' }),
+      makeRow({ waveId: 'w1', amount: '1.00', accountGroup: 'Asset' }),
+      makeRow({ waveId: 'w1', amount: '0.50', accountGroup: 'Equity' }),
     ))).toThrow('Transaction w1 does not balance')
   })
 })
