@@ -28,6 +28,23 @@ export const booksRouter = router({
       return { id: book.id, name: book.name, description: descriptionRow?.value ?? null }
     }),
 
+  setDescription: protectedProcedure
+    .input(z.object({ id: z.number(), description: z.string() }))
+    .mutation(async ({ input, ctx }) => {
+      const book = await ctx.db.query.books.findFirst({
+        where: and(eq(books.id, input.id), eq(books.userId, ctx.user.id)),
+      })
+      if (!book) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Book not found' })
+      }
+      const bookDb = getBookDb(book.id)
+      bookDb
+        .insert(kvp)
+        .values({ key: 'description', value: input.description })
+        .onConflictDoUpdate({ target: kvp.key, set: { value: input.description } })
+        .run()
+    }),
+
   create: protectedProcedure
     .input(z.object({ name: z.string().min(1, 'Name is required') }))
     .mutation(({ input, ctx }) => {
