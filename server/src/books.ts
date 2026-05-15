@@ -4,6 +4,7 @@ import { TRPCError } from '@trpc/server'
 import { router, protectedProcedure } from './trpc'
 import { books } from './db/schema'
 import { getBookDb, getKvp, setKvp } from './db/bookDb'
+import { importWaveCsv } from './waveImport'
 
 export const booksRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
@@ -56,7 +57,7 @@ export const booksRouter = router({
       setKvp(bookDb, 'name', input.name)
       setKvp(bookDb, 'description', input.description)
       if (input.csvContent) {
-        console.log(`Wave CSV import for book ${book.id}:\n${input.csvContent}`)
+        importWaveCsv(bookDb, input.csvContent)
       }
       return { id: book.id, name: book.name }
     }),
