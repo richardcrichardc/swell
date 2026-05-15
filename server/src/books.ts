@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { eq, asc, and } from 'drizzle-orm'
+import { eq, asc, and, inArray } from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
 import { router, protectedProcedure } from './trpc'
 import { books } from './db/schema'
@@ -24,8 +24,9 @@ export const booksRouter = router({
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Book not found' })
       }
       const bookDb = getBookDb(book.id)
-      const descriptionRow = await bookDb.query.kvp.findFirst({ where: eq(kvp.key, 'description') })
-      return { id: book.id, name: book.name, description: descriptionRow?.value ?? null }
+      const kvpRows = await bookDb.query.kvp.findMany({ where: inArray(kvp.key, ['name', 'description']) })
+      const kvpMap = Object.fromEntries(kvpRows.map((r) => [r.key, r.value]))
+      return { id: book.id, name: kvpMap.name ?? null, description: kvpMap.description ?? null }
     }),
 
   setDescription: protectedProcedure
@@ -53,6 +54,8 @@ export const booksRouter = router({
         .values({ name: input.name, userId: ctx.user.id })
         .returning()
         .get()
+      const bookDb = getBookDb(book.id)
+      bookDb.insert(kvp).values({ key: 'name', value: input.name }).run()
       return { id: book.id, name: book.name }
     }),
 })

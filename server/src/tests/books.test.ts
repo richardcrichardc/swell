@@ -9,15 +9,14 @@ vi.mock('../db/bookDb', () => ({
 
 import { getBookDb } from '../db/bookDb'
 
-function mockBookDb(description?: string | null) {
+function mockBookDb({ name, description }: { name?: string; description?: string } = {}) {
+  const rows = [
+    ...(name != null ? [{ key: 'name', value: name }] : []),
+    ...(description != null ? [{ key: 'description', value: description }] : []),
+  ]
   vi.mocked(getBookDb).mockReturnValue({
-    query: {
-      kvp: {
-        findFirst: vi.fn().mockResolvedValue(
-          description != null ? { key: 'description', value: description } : undefined,
-        ),
-      },
-    },
+    query: { kvp: { findMany: vi.fn().mockResolvedValue(rows) } },
+    insert: vi.fn().mockReturnValue({ values: vi.fn().mockReturnValue({ run: vi.fn() }) }),
   } as any)
 }
 
@@ -78,8 +77,8 @@ describe('books.list', () => {
 })
 
 describe('books.get', () => {
-  it('returns the book with its description', async () => {
-    mockBookDb('My description')
+  it('returns name and description from kvp', async () => {
+    mockBookDb({ name: 'Personal', description: 'My description' })
     const caller = createCaller({
       ctxUser: { id: 1, email: 'test@example.com', name: 'test' },
       foundBook: { id: 1, name: 'Personal', userId: 1 },
@@ -88,14 +87,14 @@ describe('books.get', () => {
     expect(result).toEqual({ id: 1, name: 'Personal', description: 'My description' })
   })
 
-  it('returns null description when no kvp row exists', async () => {
-    mockBookDb(null)
+  it('returns null for name and description when no kvp rows exist', async () => {
+    mockBookDb()
     const caller = createCaller({
       ctxUser: { id: 1, email: 'test@example.com', name: 'test' },
       foundBook: { id: 1, name: 'Personal', userId: 1 },
     })
     const result = await caller.get({ id: 1 })
-    expect(result).toEqual({ id: 1, name: 'Personal', description: null })
+    expect(result).toEqual({ id: 1, name: null, description: null })
   })
 
   it('throws NOT_FOUND when book does not exist', async () => {
@@ -113,7 +112,8 @@ describe('books.get', () => {
 })
 
 describe('books.create', () => {
-  it('creates a book and returns it', async () => {
+  it('creates a book and stores name in kvp', async () => {
+    mockBookDb()
     const caller = createCaller({
       ctxUser: { id: 1, email: 'test@example.com', name: 'test' },
       insertedBook: { id: 3, name: 'New Book', userId: 1 },
