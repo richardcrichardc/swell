@@ -3,7 +3,7 @@ import { eq, asc, and } from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
 import { router, protectedProcedure } from './trpc'
 import { books } from './db/schema'
-import { getBookDb, getKvp, setKvp } from './db/bookDb'
+import { getBookDb, getKvp, setKvp, account, transaction, line } from './db/bookDb'
 import { validateWaveCsv, importWaveCsv } from './waveImport'
 
 export const booksRouter = router({
@@ -43,6 +43,44 @@ export const booksRouter = router({
       const bookDb = getBookDb(book.id)
       setKvp(bookDb, 'name', input.name)
       setKvp(bookDb, 'description', input.description)
+    }),
+
+  accounts: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ input, ctx }) => {
+      const book = await ctx.db.query.books.findFirst({
+        where: and(eq(books.id, input.id), eq(books.userId, ctx.user.id)),
+      })
+      if (!book) throw new TRPCError({ code: 'NOT_FOUND', message: 'Book not found' })
+      const bookDb = getBookDb(book.id)
+      return bookDb.select().from(account).orderBy(asc(account.group), asc(account.name)).all()
+    }),
+
+  journal: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ input, ctx }) => {
+      const book = await ctx.db.query.books.findFirst({
+        where: and(eq(books.id, input.id), eq(books.userId, ctx.user.id)),
+      })
+      if (!book) throw new TRPCError({ code: 'NOT_FOUND', message: 'Book not found' })
+      const bookDb = getBookDb(book.id)
+      const txns = bookDb.select().from(transaction).orderBy(asc(transaction.date)).all()
+      const lines = bookDb.select({
+        id: line.id,
+        transactionId: line.transactionId,
+        accountName: account.name,
+        description: line.description,
+        amount: line.amount,
+        salesTaxAmount: line.salesTaxAmount,
+        salesTaxName: line.salesTaxName,
+      }).from(line).leftJoin(account, eq(line.accountId, account.id)).all()
+      const linesByTxn = new Map<number, typeof lines>()
+      for (const l of lines) {
+        const arr = linesByTxn.get(l.transactionId) ?? []
+        arr.push(l)
+        linesByTxn.set(l.transactionId, arr)
+      }
+      return txns.map(txn => ({ ...txn, lines: linesByTxn.get(txn.id) ?? [] }))
     }),
 
   create: protectedProcedure
