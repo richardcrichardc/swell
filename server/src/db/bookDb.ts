@@ -13,6 +13,7 @@ export const account = sqliteTable('account', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   name: text('name').notNull(),
   type: text('type').notNull(),
+  sortOrder: integer('sort_order').notNull(),
 })
 
 export const transaction = sqliteTable('transaction', {
@@ -40,7 +41,7 @@ function openBookDb(bookId: number) {
   const sqlite = new Database(`./data/books/book${bookId}.db`)
   sqlite.pragma('journal_mode = WAL')
   sqlite.exec('CREATE TABLE IF NOT EXISTS kvp (key text PRIMARY KEY NOT NULL, value text NOT NULL)')
-  sqlite.exec('CREATE TABLE IF NOT EXISTS account (id integer PRIMARY KEY AUTOINCREMENT NOT NULL, name text NOT NULL, type text NOT NULL)')
+  sqlite.exec('CREATE TABLE IF NOT EXISTS account (id integer PRIMARY KEY AUTOINCREMENT NOT NULL, name text NOT NULL, type text NOT NULL, sort_order integer NOT NULL)')
   sqlite.exec('CREATE TABLE IF NOT EXISTS "transaction" (id integer PRIMARY KEY AUTOINCREMENT NOT NULL, date text NOT NULL, description text NOT NULL)')
   sqlite.exec('CREATE TABLE IF NOT EXISTS line (id integer PRIMARY KEY AUTOINCREMENT NOT NULL, transaction_id integer NOT NULL, account_id integer NOT NULL, description text NOT NULL, amount integer NOT NULL, sales_tax_amount integer)')
   return drizzle(sqlite, { schema: bookSchema })

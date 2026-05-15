@@ -1,7 +1,58 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { trpc } from '../lib/trpc'
 import { AccountType, AccountTypeLabel } from '../../shared/accounts'
+
+type Account = { id: number; name: string; type: string; sortOrder: number }
+
+function SortableAccount({
+  account,
+  editing,
+  name,
+  onNameChange,
+}: {
+  account: Account
+  editing: boolean
+  name: string
+  onNameChange: (name: string) => void
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: account.id })
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }
+
+  return (
+    <div ref={setNodeRef} style={style} className="flex items-center gap-2 py-1 pl-4">
+      {editing && (
+        <span {...attributes} {...listeners} className="cursor-grab text-gray-300 hover:text-gray-500 select-none">
+          ⠿
+        </span>
+      )}
+      {editing ? (
+        <input
+          className="flex-1 rounded border border-gray-300 px-2 py-0.5 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          value={name}
+          onChange={(e) => onNameChange(e.target.value)}
+        />
+      ) : (
+        <span>{name}</span>
+      )}
+    </div>
+  )
+}
 
 export default function ChartOfAccountsPage() {
   const { id } = useParams<{ id: string }>()
@@ -10,25 +61,50 @@ export default function ChartOfAccountsPage() {
   const updateAccounts = trpc.books.updateAccounts.useMutation()
 
   const [editing, setEditing] = useState(false)
-  const [edits, setEdits] = useState<Record<number, string>>({})
+  const [editNames, setEditNames] = useState<Record<number, string>>({})
+  const [editOrder, setEditOrder] = useState<Record<string, number[]>>({})
+
+  const sensors = useSensors(useSensor(PointerSensor))
 
   function enterEdit() {
-    setEdits({})
+    if (!accounts) return
+    setEditNames({})
+    const order: Record<string, number[]> = {}
+    for (const type of Object.values(AccountType)) {
+      order[type] = accounts.filter((a) => a.type === type).map((a) => a.id)
+    }
+    setEditOrder(order)
     setEditing(true)
   }
 
   function cancelEdit() {
-    setEdits({})
     setEditing(false)
   }
 
   async function saveEdit() {
-    const updates = Object.entries(edits).map(([id, name]) => ({ id: Number(id), name }))
-    if (updates.length > 0) {
-      await updateAccounts.mutateAsync({ bookId, updates })
-      refetch()
-    }
+    if (!accounts) return
+    const accountById = Object.fromEntries(accounts.map((a) => [a.id, a]))
+    const updates = Object.entries(editOrder).flatMap(([, ids]) =>
+      ids.map((id, i) => ({
+        id,
+        name: editNames[id] ?? accountById[id].name,
+        sortOrder: i,
+      }))
+    )
+    await updateAccounts.mutateAsync({ bookId, updates })
+    await refetch()
     setEditing(false)
+  }
+
+  function handleDragEnd(type: string, event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    setEditOrder((prev) => {
+      const ids = prev[type] ?? []
+      const oldIndex = ids.indexOf(Number(active.id))
+      const newIndex = ids.indexOf(Number(over.id))
+      return { ...prev, [type]: arrayMove(ids, oldIndex, newIndex) }
+    })
   }
 
   if (isLoading) return <p className="text-sm text-gray-500">Loading…</p>
@@ -51,23 +127,27 @@ export default function ChartOfAccountsPage() {
       {Object.values(AccountType).map((type) => {
         const group = accounts?.filter((a) => a.type === type) ?? []
         if (group.length === 0) return null
+        const orderedIds = editOrder[type] ?? group.map((a) => a.id)
+        const accountById = Object.fromEntries(group.map((a) => [a.id, a]))
+        const orderedAccounts = orderedIds.map((id) => accountById[id]).filter(Boolean)
+
         return (
           <div key={type} className="mt-8">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">{AccountTypeLabel[type]}</h2>
             <div className="mt-2">
-              {group.map((a) => (
-                <div key={a.id} className="py-1 pl-4">
-                  {editing ? (
-                    <input
-                      className="w-full rounded border border-gray-300 px-2 py-0.5 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      value={edits[a.id] ?? a.name}
-                      onChange={(e) => setEdits((prev) => ({ ...prev, [a.id]: e.target.value }))}
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e) => handleDragEnd(type, e)}>
+                <SortableContext items={orderedIds} strategy={verticalListSortingStrategy}>
+                  {orderedAccounts.map((a) => (
+                    <SortableAccount
+                      key={a.id}
+                      account={a}
+                      editing={editing}
+                      name={editNames[a.id] ?? a.name}
+                      onNameChange={(name) => setEditNames((prev) => ({ ...prev, [a.id]: name }))}
                     />
-                  ) : (
-                    a.name
-                  )}
-                </div>
-              ))}
+                  ))}
+                </SortableContext>
+              </DndContext>
             </div>
           </div>
         )

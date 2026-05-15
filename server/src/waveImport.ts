@@ -74,6 +74,7 @@ export function validateWaveCsv(csvContent: string): void {
 export function importWaveCsv(db: BookDb, csvContent: string): void {
   const csvLines = csvContent.split(/\r?\n/)
   const waveTransactionIds = new Map<string, number>()
+  const sortOrderByType = new Map<string, number>()
 
   for (let i = 1; i < csvLines.length; i++) {
     const csvLine = csvLines[i].trim()
@@ -92,7 +93,9 @@ export function importWaveCsv(db: BookDb, csvContent: string): void {
     if (existingAccount) {
       accountId = existingAccount.id
     } else {
-      const inserted = db.insert(account).values({ name: accountName, type: accountType }).returning().get()
+      const sortOrder = sortOrderByType.get(accountType) ?? 0
+      sortOrderByType.set(accountType, sortOrder + 1)
+      const inserted = db.insert(account).values({ name: accountName, type: accountType, sortOrder }).returning().get()
       accountId = inserted.id
     }
 
