@@ -10,7 +10,7 @@ function createTestDb() {
   sqlite.exec('CREATE TABLE kvp (key text PRIMARY KEY NOT NULL, value text NOT NULL)')
   sqlite.exec('CREATE TABLE account (id integer PRIMARY KEY AUTOINCREMENT NOT NULL, name text NOT NULL, "group" text NOT NULL, type text NOT NULL)')
   sqlite.exec('CREATE TABLE "transaction" (id integer PRIMARY KEY AUTOINCREMENT NOT NULL, date text NOT NULL, description text NOT NULL)')
-  sqlite.exec('CREATE TABLE line (id integer PRIMARY KEY AUTOINCREMENT NOT NULL, transaction_id integer NOT NULL, account_id integer NOT NULL, description text NOT NULL, amount integer NOT NULL, sales_tax_amount integer, sales_tax_name text)')
+  sqlite.exec('CREATE TABLE line (id integer PRIMARY KEY AUTOINCREMENT NOT NULL, transaction_id integer NOT NULL, account_id integer NOT NULL, description text NOT NULL, amount integer NOT NULL, sales_tax_amount integer)')
   return drizzle(sqlite)
 }
 
@@ -22,7 +22,6 @@ function makeRow(opts: {
   lineDescription?: string
   amount?: string
   salesTaxAmount?: string
-  salesTaxName?: string
   accountGroup?: string
   accountType?: string
 } = {}): string {
@@ -34,8 +33,7 @@ function makeRow(opts: {
   cols[4] = opts.lineDescription ?? ''
   cols[5] = opts.amount ?? ''
   cols[16] = opts.salesTaxAmount ?? ''
-  cols[17] = opts.salesTaxName ?? ''
-  cols[20] = opts.accountGroup ?? ''
+cols[20] = opts.accountGroup ?? ''
   cols[21] = opts.accountType ?? ''
   return cols.join(',')
 }
@@ -58,18 +56,8 @@ describe('validateWaveCsv', () => {
       .toThrow('Invalid account group "Revenue" on row 2')
   })
 
-  it('accepts a row with both sales tax fields', () => {
-    expect(() => validateWaveCsv(makeCsv(makeRow({ waveId: 'w1', amount: '0.00', salesTaxAmount: '1.50', salesTaxName: 'GST' })))).not.toThrow()
-  })
-
-  it('rejects a row with sales tax amount but no name', () => {
-    expect(() => validateWaveCsv(makeCsv(makeRow({ waveId: 'w1', amount: '0.00', salesTaxAmount: '1.50', salesTaxName: '' }))))
-      .toThrow('Row 2 has only one of sales tax amount/name')
-  })
-
-  it('rejects a row with sales tax name but no amount', () => {
-    expect(() => validateWaveCsv(makeCsv(makeRow({ waveId: 'w1', amount: '0.00', salesTaxAmount: '', salesTaxName: 'GST' }))))
-      .toThrow('Row 2 has only one of sales tax amount/name')
+  it('accepts a row with a sales tax amount', () => {
+    expect(() => validateWaveCsv(makeCsv(makeRow({ waveId: 'w1', amount: '0.00', salesTaxAmount: '1.50' })))).not.toThrow()
   })
 
   it('ignores blank lines', () => {
@@ -144,14 +132,14 @@ describe('importWaveCsv', () => {
     importWaveCsv(db as any, makeCsv(makeRow({ waveId: 'w1', amount: '12.50', lineDescription: 'monthly rent' })))
     const lines = db.select().from(line).all()
     expect(lines).toHaveLength(1)
-    expect(lines[0]).toMatchObject({ amount: 1250, description: 'monthly rent', salesTaxAmount: null, salesTaxName: null })
+    expect(lines[0]).toMatchObject({ amount: 1250, description: 'monthly rent', salesTaxAmount: null })
   })
 
   it('stores sales tax as integer cents', () => {
     const db = createTestDb()
-    importWaveCsv(db as any, makeCsv(makeRow({ waveId: 'w1', amount: '100.00', salesTaxAmount: '15.00', salesTaxName: 'GST' })))
+    importWaveCsv(db as any, makeCsv(makeRow({ waveId: 'w1', amount: '100.00', salesTaxAmount: '15.00' })))
     const lines = db.select().from(line).all()
-    expect(lines[0]).toMatchObject({ amount: 10000, salesTaxAmount: 1500, salesTaxName: 'GST' })
+    expect(lines[0]).toMatchObject({ amount: 10000, salesTaxAmount: 1500 })
   })
 
   it('creates two lines for a split transaction', () => {

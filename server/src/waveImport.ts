@@ -54,10 +54,6 @@ export function validateWaveCsv(csvContent: string): void {
     }
 
     const salesTaxAmount = cols[16]?.trim() ?? ''
-    const salesTaxName = cols[17]?.trim() ?? ''
-    if ((salesTaxAmount !== '') !== (salesTaxName !== '')) {
-      throw new Error(`Row ${i + 1} has only one of sales tax amount/name — both are required if either is present`)
-    }
 
     const waveId = cols[0]?.trim() ?? ''
     const amount = parseCents(cols[5]?.trim() ?? '0')
@@ -112,8 +108,6 @@ export function importWaveCsv(db: BookDb, csvContent: string): void {
     const amount = parseCents(cols[5]?.trim() ?? '0')
     const salesTaxAmountStr = cols[16]?.trim() ?? ''
     const salesTaxAmount = salesTaxAmountStr !== '' ? parseCents(salesTaxAmountStr) : null
-    const salesTaxName = cols[17]?.trim() || null
-
-    db.insert(line).values({ transactionId, accountId, description, amount, salesTaxAmount, salesTaxName }).run()
+    db.insert(line).values({ transactionId, accountId, description, amount, salesTaxAmount }).run()
   }
 }

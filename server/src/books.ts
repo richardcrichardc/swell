@@ -72,7 +72,6 @@ export const booksRouter = router({
         description: line.description,
         amount: line.amount,
         salesTaxAmount: line.salesTaxAmount,
-        salesTaxName: line.salesTaxName,
       }).from(line).leftJoin(account, eq(line.accountId, account.id)).all()
       const linesByTxn = new Map<number, typeof lines>()
       for (const l of lines) {
