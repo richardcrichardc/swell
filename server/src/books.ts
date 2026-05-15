@@ -56,6 +56,19 @@ export const booksRouter = router({
       return bookDb.select().from(account).orderBy(asc(account.type), asc(account.name)).all()
     }),
 
+  updateAccounts: protectedProcedure
+    .input(z.object({ bookId: z.number(), updates: z.array(z.object({ id: z.number(), name: z.string().min(1) })) }))
+    .mutation(async ({ input, ctx }) => {
+      const book = await ctx.db.query.books.findFirst({
+        where: and(eq(books.id, input.bookId), eq(books.userId, ctx.user.id)),
+      })
+      if (!book) throw new TRPCError({ code: 'NOT_FOUND', message: 'Book not found' })
+      const bookDb = getBookDb(book.id)
+      for (const { id, name } of input.updates) {
+        bookDb.update(account).set({ name }).where(eq(account.id, id)).run()
+      }
+    }),
+
   journal: protectedProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ input, ctx }) => {
