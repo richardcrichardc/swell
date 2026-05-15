@@ -41,6 +41,8 @@ function parseCents(value: string): number {
 
 export function validateWaveCsv(csvContent: string): void {
   const lines = csvContent.split(/\r?\n/)
+  const transactionTotals = new Map<string, number>()
+
   for (let i = 1; i < lines.length; i++) {
     const csvLine = lines[i].trim()
     if (!csvLine) continue
@@ -55,6 +57,16 @@ export function validateWaveCsv(csvContent: string): void {
     const salesTaxName = cols[17]?.trim() ?? ''
     if ((salesTaxAmount !== '') !== (salesTaxName !== '')) {
       throw new Error(`Row ${i + 1} has only one of sales tax amount/name — both are required if either is present`)
+    }
+
+    const waveId = cols[0]?.trim() ?? ''
+    const amount = parseCents(cols[5]?.trim() ?? '0')
+    transactionTotals.set(waveId, (transactionTotals.get(waveId) ?? 0) + amount)
+  }
+
+  for (const [waveId, total] of transactionTotals) {
+    if (total !== 0) {
+      throw new Error(`Transaction ${waveId} does not balance`)
     }
   }
 }
