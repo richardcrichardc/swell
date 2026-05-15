@@ -68,6 +68,7 @@ export const booksRouter = router({
       const lines = bookDb.select({
         id: line.id,
         transactionId: line.transactionId,
+        accountType: account.type,
         accountName: account.name,
         description: line.description,
         amount: line.amount,
