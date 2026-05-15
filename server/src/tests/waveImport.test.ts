@@ -8,7 +8,7 @@ import { account, transaction, line } from '../db/bookDb'
 function createTestDb() {
   const sqlite = new Database(':memory:')
   sqlite.exec('CREATE TABLE kvp (key text PRIMARY KEY NOT NULL, value text NOT NULL)')
-  sqlite.exec('CREATE TABLE account (id integer PRIMARY KEY AUTOINCREMENT NOT NULL, name text NOT NULL, "group" text NOT NULL, type text NOT NULL)')
+  sqlite.exec('CREATE TABLE account (id integer PRIMARY KEY AUTOINCREMENT NOT NULL, name text NOT NULL, type text NOT NULL, description text NOT NULL)')
   sqlite.exec('CREATE TABLE "transaction" (id integer PRIMARY KEY AUTOINCREMENT NOT NULL, date text NOT NULL, description text NOT NULL)')
   sqlite.exec('CREATE TABLE line (id integer PRIMARY KEY AUTOINCREMENT NOT NULL, transaction_id integer NOT NULL, account_id integer NOT NULL, description text NOT NULL, amount integer NOT NULL, sales_tax_amount integer)')
   return drizzle(sqlite)
@@ -22,8 +22,8 @@ function makeRow(opts: {
   lineDescription?: string
   amount?: string
   salesTaxAmount?: string
-  accountGroup?: string
   accountType?: string
+  accountDescription?: string
 } = {}): string {
   const cols = Array(22).fill('')
   cols[0] = opts.waveId ?? ''
@@ -33,8 +33,8 @@ function makeRow(opts: {
   cols[4] = opts.lineDescription ?? ''
   cols[5] = opts.amount ?? ''
   cols[16] = opts.salesTaxAmount ?? ''
-cols[20] = opts.accountGroup ?? ''
-  cols[21] = opts.accountType ?? ''
+  cols[20] = opts.accountType ?? ''
+  cols[21] = opts.accountDescription ?? ''
   return cols.join(',')
 }
 
@@ -44,42 +44,42 @@ function makeCsv(...rows: string[]): string {
 
 describe('validateWaveCsv', () => {
   it('accepts a valid CSV', () => {
-    expect(() => validateWaveCsv(makeCsv(makeRow({ waveId: 'w1', amount: '0.00', accountGroup: 'Expense' })))).not.toThrow()
+    expect(() => validateWaveCsv(makeCsv(makeRow({ waveId: 'w1', amount: '0.00', accountType: 'Expense' })))).not.toThrow()
   })
 
-  it('rejects an empty account group', () => {
-    expect(() => validateWaveCsv(makeCsv(makeRow({ waveId: 'w1', amount: '0.00', accountGroup: '' }))))
-      .toThrow('Invalid account group "" on row 2')
+  it('rejects an empty account type', () => {
+    expect(() => validateWaveCsv(makeCsv(makeRow({ waveId: 'w1', amount: '0.00', accountType: '' }))))
+      .toThrow('Invalid account type "" on row 2')
   })
 
-  it('rejects an invalid account group', () => {
-    expect(() => validateWaveCsv(makeCsv(makeRow({ waveId: 'w1', amount: '0.00', accountGroup: 'Revenue' }))))
-      .toThrow('Invalid account group "Revenue" on row 2')
+  it('rejects an invalid account type', () => {
+    expect(() => validateWaveCsv(makeCsv(makeRow({ waveId: 'w1', amount: '0.00', accountType: 'Revenue' }))))
+      .toThrow('Invalid account type "Revenue" on row 2')
   })
 
   it('accepts a row with a sales tax amount', () => {
-    expect(() => validateWaveCsv(makeCsv(makeRow({ waveId: 'w1', amount: '0.00', accountGroup: 'Expense', salesTaxAmount: '1.50' })))).not.toThrow()
+    expect(() => validateWaveCsv(makeCsv(makeRow({ waveId: 'w1', amount: '0.00', accountType: 'Expense', salesTaxAmount: '1.50' })))).not.toThrow()
   })
 
   it('ignores blank lines', () => {
     expect(() => validateWaveCsv(makeCsv(
-      makeRow({ waveId: 'w1', amount: '0.00', accountGroup: 'Expense' }),
+      makeRow({ waveId: 'w1', amount: '0.00', accountType: 'Expense' }),
       '',
-      makeRow({ waveId: 'w2', amount: '0.00', accountGroup: 'Expense' }),
+      makeRow({ waveId: 'w2', amount: '0.00', accountType: 'Expense' }),
     ))).not.toThrow()
   })
 
   it('accepts a balanced multi-line transaction', () => {
     expect(() => validateWaveCsv(makeCsv(
-      makeRow({ waveId: 'w1', amount: '1.00', accountGroup: 'Asset' }),
-      makeRow({ waveId: 'w1', amount: '1.00', accountGroup: 'Equity' }),
+      makeRow({ waveId: 'w1', amount: '1.00', accountType: 'Asset' }),
+      makeRow({ waveId: 'w1', amount: '1.00', accountType: 'Equity' }),
     ))).not.toThrow()
   })
 
   it('rejects an unbalanced transaction', () => {
     expect(() => validateWaveCsv(makeCsv(
-      makeRow({ waveId: 'w1', amount: '1.00', accountGroup: 'Asset' }),
-      makeRow({ waveId: 'w1', amount: '0.50', accountGroup: 'Equity' }),
+      makeRow({ waveId: 'w1', amount: '1.00', accountType: 'Asset' }),
+      makeRow({ waveId: 'w1', amount: '0.50', accountType: 'Equity' }),
     ))).toThrow('Transaction w1 does not balance')
   })
 })
@@ -87,17 +87,17 @@ describe('validateWaveCsv', () => {
 describe('importWaveCsv', () => {
   it('creates an account', () => {
     const db = createTestDb()
-    importWaveCsv(db as any, makeCsv(makeRow({ waveId: 'w1', amount: '0.00', accountName: 'Rent', accountGroup: 'Expense', accountType: 'Expense' })))
+    importWaveCsv(db as any, makeCsv(makeRow({ waveId: 'w1', amount: '0.00', accountName: 'Rent', accountType: 'Expense', accountDescription: 'Expense' })))
     const accounts = db.select().from(account).all()
     expect(accounts).toHaveLength(1)
-    expect(accounts[0]).toMatchObject({ name: 'Rent', group: 'Expense', type: 'Expense' })
+    expect(accounts[0]).toMatchObject({ name: 'Rent', type: 'Expense', description: 'Expense' })
   })
 
   it('deduplicates accounts with the same name, group and type', () => {
     const db = createTestDb()
     importWaveCsv(db as any, makeCsv(
-      makeRow({ waveId: 'w1', amount: '0.00', accountName: 'Rent', accountGroup: 'Expense', accountType: 'Expense' }),
-      makeRow({ waveId: 'w2', amount: '0.00', accountName: 'Rent', accountGroup: 'Expense', accountType: 'Expense' }),
+      makeRow({ waveId: 'w1', amount: '0.00', accountName: 'Rent', accountType: 'Expense', accountDescription: 'Expense' }),
+      makeRow({ waveId: 'w2', amount: '0.00', accountName: 'Rent', accountType: 'Expense', accountDescription: 'Expense' }),
     ))
     expect(db.select().from(account).all()).toHaveLength(1)
   })
@@ -105,8 +105,8 @@ describe('importWaveCsv', () => {
   it('creates separate accounts when name differs', () => {
     const db = createTestDb()
     importWaveCsv(db as any, makeCsv(
-      makeRow({ waveId: 'w1', amount: '0.00', accountName: 'Rent', accountGroup: 'Expense', accountType: 'Expense' }),
-      makeRow({ waveId: 'w2', amount: '0.00', accountName: 'Utilities', accountGroup: 'Expense', accountType: 'Expense' }),
+      makeRow({ waveId: 'w1', amount: '0.00', accountName: 'Rent', accountType: 'Expense', accountDescription: 'Expense' }),
+      makeRow({ waveId: 'w2', amount: '0.00', accountName: 'Utilities', accountType: 'Expense', accountDescription: 'Expense' }),
     ))
     expect(db.select().from(account).all()).toHaveLength(2)
   })
@@ -122,8 +122,8 @@ describe('importWaveCsv', () => {
   it('deduplicates transactions by Wave ID', () => {
     const db = createTestDb()
     importWaveCsv(db as any, makeCsv(
-      makeRow({ waveId: 'w1', amount: '800.00', accountName: 'Rent', accountGroup: 'Expense', accountType: 'Expense' }),
-      makeRow({ waveId: 'w1', amount: '-800.00', accountName: 'GST Payable', accountGroup: 'Liability', accountType: 'Liability' }),
+      makeRow({ waveId: 'w1', amount: '800.00', accountName: 'Rent', accountType: 'Expense', accountDescription: 'Expense' }),
+      makeRow({ waveId: 'w1', amount: '-800.00', accountName: 'GST Payable', accountType: 'Liability', accountDescription: 'Liability' }),
     ))
     expect(db.select().from(transaction).all()).toHaveLength(1)
   })
@@ -146,8 +146,8 @@ describe('importWaveCsv', () => {
   it('creates two lines for a split transaction', () => {
     const db = createTestDb()
     importWaveCsv(db as any, makeCsv(
-      makeRow({ waveId: 'w1', accountName: 'Rent', accountGroup: 'Expense', accountType: 'Expense', amount: '800.00' }),
-      makeRow({ waveId: 'w1', accountName: 'GST Payable', accountGroup: 'Liability', accountType: 'Liability', amount: '-800.00' }),
+      makeRow({ waveId: 'w1', accountName: 'Rent', accountType: 'Expense', accountDescription: 'Expense', amount: '800.00' }),
+      makeRow({ waveId: 'w1', accountName: 'GST Payable', accountType: 'Liability', accountDescription: 'Liability', amount: '-800.00' }),
     ))
     const lines = db.select().from(line).all()
     expect(lines).toHaveLength(2)
@@ -157,7 +157,7 @@ describe('importWaveCsv', () => {
 
   it('links lines to the correct transaction and account', () => {
     const db = createTestDb()
-    importWaveCsv(db as any, makeCsv(makeRow({ waveId: 'w1', amount: '0.00', accountName: 'Rent', accountGroup: 'Expense', accountType: 'Expense' })))
+    importWaveCsv(db as any, makeCsv(makeRow({ waveId: 'w1', amount: '0.00', accountName: 'Rent', accountType: 'Expense', accountDescription: 'Expense' })))
     const accounts = db.select().from(account).all()
     const txns = db.select().from(transaction).all()
     const lines = db.select().from(line).all()

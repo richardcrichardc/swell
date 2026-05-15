@@ -1,6 +1,6 @@
 import { eq, and } from 'drizzle-orm'
 import { type BookDb, account, transaction, line } from './db/bookDb'
-import { AccountGroup, AccountGroupSign } from './accounts'
+import { AccountType, AccountTypeSign } from './accounts'
 
 function parseCsvLine(csvLine: string): string[] {
   const fields: string[] = []
@@ -39,12 +39,12 @@ function parseCents(value: string): number {
   return Math.round(parseFloat(value) * 100)
 }
 
-function parseAccountGroup(value: string, rowNum: number): AccountGroup {
+function parseAccountType(value: string, rowNum: number): AccountType {
   const trimmed = value.trim()
-  if (!(Object.values(AccountGroup) as string[]).includes(trimmed)) {
-    throw new Error(`Invalid account group "${trimmed}" on row ${rowNum}`)
+  if (!(Object.values(AccountType) as string[]).includes(trimmed)) {
+    throw new Error(`Invalid account type "${trimmed}" on row ${rowNum}`)
   }
-  return trimmed as AccountGroup
+  return trimmed as AccountType
 }
 
 export function validateWaveCsv(csvContent: string): void {
@@ -56,11 +56,11 @@ export function validateWaveCsv(csvContent: string): void {
     if (!csvLine) continue
     const cols = parseCsvLine(csvLine)
 
-    const group = parseAccountGroup(cols[20]?.trim() ?? '', i + 1)
+    const accountType = parseAccountType(cols[20]?.trim() ?? '', i + 1)
 
     const waveId = cols[0]?.trim() ?? ''
     const amount = parseCents(cols[5]?.trim() ?? '0')
-    const sign = AccountGroupSign[group]
+    const sign = AccountTypeSign[accountType]
     transactionTotals.set(waveId, (transactionTotals.get(waveId) ?? 0) + amount * sign)
   }
 
@@ -82,17 +82,17 @@ export function importWaveCsv(db: BookDb, csvContent: string): void {
     const cols = parseCsvLine(csvLine)
 
     const accountName = cols[2]?.trim() ?? ''
-    const accountGroup = cols[20]?.trim() ?? ''
-    const accountType = cols[21]?.trim() ?? ''
+    const accountType = cols[20]?.trim() ?? ''
+    const accountDescription = cols[21]?.trim() ?? ''
 
     let accountId: number
     const existingAccount = db.select().from(account)
-      .where(and(eq(account.name, accountName), eq(account.group, accountGroup), eq(account.type, accountType)))
+      .where(and(eq(account.name, accountName), eq(account.type, accountType), eq(account.description, accountDescription)))
       .get()
     if (existingAccount) {
       accountId = existingAccount.id
     } else {
-      const inserted = db.insert(account).values({ name: accountName, group: accountGroup, type: accountType }).returning().get()
+      const inserted = db.insert(account).values({ name: accountName, type: accountType, description: accountDescription }).returning().get()
       accountId = inserted.id
     }
 
@@ -112,6 +112,7 @@ export function importWaveCsv(db: BookDb, csvContent: string): void {
     const amount = parseCents(cols[5]?.trim() ?? '0')
     const salesTaxAmountStr = cols[16]?.trim() ?? ''
     const salesTaxAmount = salesTaxAmountStr !== '' ? parseCents(salesTaxAmountStr) : null
+
     db.insert(line).values({ transactionId, accountId, description, amount, salesTaxAmount }).run()
   }
 }

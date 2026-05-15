@@ -1,4 +1,4 @@
-export enum AccountGroup {
+export enum AccountType {
   Asset = 'Asset',
   Equity = 'Equity',
   Expense = 'Expense',
@@ -7,10 +7,10 @@ export enum AccountGroup {
 }
 
 // +1 = debit-normal (positive amount = increase), -1 = credit-normal
-export const AccountGroupSign: Record<AccountGroup, 1 | -1> = {
-  [AccountGroup.Asset]: 1,
-  [AccountGroup.Expense]: 1,
-  [AccountGroup.Liability]: -1,
-  [AccountGroup.Equity]: -1,
-  [AccountGroup.Income]: -1,
+export const AccountTypeSign: Record<AccountType, 1 | -1> = {
+  [AccountType.Asset]: 1,
+  [AccountType.Expense]: 1,
+  [AccountType.Liability]: -1,
+  [AccountType.Equity]: -1,
+  [AccountType.Income]: -1,
 }

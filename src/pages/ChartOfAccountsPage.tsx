@@ -15,16 +15,16 @@ export default function ChartOfAccountsPage() {
         <thead>
           <tr className="border-b text-left text-gray-500">
             <th className="pb-2 font-medium">Name</th>
-            <th className="pb-2 font-medium">Group</th>
             <th className="pb-2 font-medium">Type</th>
+            <th className="pb-2 font-medium">Description</th>
           </tr>
         </thead>
         <tbody>
           {accounts?.map((a) => (
             <tr key={a.id} className="border-b border-gray-100">
               <td className="py-2">{a.name}</td>
-              <td className="py-2 text-gray-600">{a.group}</td>
               <td className="py-2 text-gray-600">{a.type}</td>
+              <td className="py-2 text-gray-600">{a.description}</td>
             </tr>
           ))}
         </tbody>

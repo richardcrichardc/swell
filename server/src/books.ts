@@ -53,7 +53,7 @@ export const booksRouter = router({
       })
       if (!book) throw new TRPCError({ code: 'NOT_FOUND', message: 'Book not found' })
       const bookDb = getBookDb(book.id)
-      return bookDb.select().from(account).orderBy(asc(account.group), asc(account.name)).all()
+      return bookDb.select().from(account).orderBy(asc(account.type), asc(account.name)).all()
     }),
 
   journal: protectedProcedure
