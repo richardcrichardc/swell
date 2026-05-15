@@ -5,7 +5,6 @@ import { router, protectedProcedure } from './trpc'
 import { books } from './db/schema'
 import { getBookDb, getKvp, setKvp, account, transaction, line } from './db/bookDb'
 import { validateWaveCsv, importWaveCsv } from './waveImport'
-import { AccountType, AccountTypeSign } from '../../shared/accounts'
 
 export const booksRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
@@ -66,20 +65,19 @@ export const booksRouter = router({
       if (!book) throw new TRPCError({ code: 'NOT_FOUND', message: 'Book not found' })
       const bookDb = getBookDb(book.id)
       const txns = bookDb.select().from(transaction).orderBy(asc(transaction.date)).all()
-      const rawLines = bookDb.select({
+      const lines = bookDb.select({
         id: line.id,
         transactionId: line.transactionId,
         accountName: account.name,
-        accountType: account.type,
         description: line.description,
         amount: line.amount,
         salesTaxAmount: line.salesTaxAmount,
       }).from(line).leftJoin(account, eq(line.accountId, account.id)).all()
-      const lines = rawLines.map(({ amount, accountType, ...rest }) => {
-        const sign = AccountTypeSign[(accountType ?? '') as AccountType] ?? 1
-        const isDebit = amount * sign > 0
-        return { ...rest, debit: isDebit ? Math.abs(amount) : null, credit: isDebit ? null : Math.abs(amount) }
-      })
+        .map(({ amount, ...rest }) => ({
+          ...rest,
+          debit: amount > 0 ? amount : null,
+          credit: amount < 0 ? Math.abs(amount) : null,
+        }))
       const linesByTxn = new Map<number, typeof lines>()
       for (const l of lines) {
         const arr = linesByTxn.get(l.transactionId) ?? []

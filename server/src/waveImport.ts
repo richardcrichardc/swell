@@ -82,7 +82,8 @@ export function importWaveCsv(db: BookDb, csvContent: string): void {
     const cols = parseCsvLine(csvLine)
 
     const accountName = cols[2]?.trim() ?? ''
-    const accountType = cols[20]?.trim() ?? ''
+    const accountType = parseAccountType(cols[20]?.trim() ?? '', i + 1)
+    const sign = AccountTypeSign[accountType]
 
     let accountId: number
     const existingAccount = db.select().from(account)
@@ -108,9 +109,9 @@ export function importWaveCsv(db: BookDb, csvContent: string): void {
     }
 
     const description = cols[4]?.trim() ?? ''
-    const amount = parseCents(cols[5]?.trim() ?? '0')
+    const amount = parseCents(cols[5]?.trim() ?? '0') * sign
     const salesTaxAmountStr = cols[16]?.trim() ?? ''
-    const salesTaxAmount = salesTaxAmountStr !== '' ? parseCents(salesTaxAmountStr) : null
+    const salesTaxAmount = salesTaxAmountStr !== '' ? parseCents(salesTaxAmountStr) * sign : null
 
     db.insert(line).values({ transactionId, accountId, description, amount, salesTaxAmount }).run()
   }

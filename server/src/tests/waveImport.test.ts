@@ -111,7 +111,7 @@ describe('importWaveCsv', () => {
 
   it('creates a transaction', () => {
     const db = createTestDb()
-    importWaveCsv(db as any, makeCsv(makeRow({ waveId: 'w1', amount: '0.00', date: '2024-03-15', txnDescription: 'Office rent' })))
+    importWaveCsv(db as any, makeCsv(makeRow({ waveId: 'w1', amount: '0.00', date: '2024-03-15', txnDescription: 'Office rent', accountType: 'Expense' })))
     const txns = db.select().from(transaction).all()
     expect(txns).toHaveLength(1)
     expect(txns[0]).toMatchObject({ date: '2024-03-15', description: 'Office rent' })
@@ -128,7 +128,7 @@ describe('importWaveCsv', () => {
 
   it('creates a line with amount in integer cents', () => {
     const db = createTestDb()
-    importWaveCsv(db as any, makeCsv(makeRow({ waveId: 'w1', amount: '12.50', lineDescription: 'monthly rent' })))
+    importWaveCsv(db as any, makeCsv(makeRow({ waveId: 'w1', amount: '12.50', lineDescription: 'monthly rent', accountType: 'Expense' })))
     const lines = db.select().from(line).all()
     expect(lines).toHaveLength(1)
     expect(lines[0]).toMatchObject({ amount: 1250, description: 'monthly rent', salesTaxAmount: null })
@@ -136,7 +136,7 @@ describe('importWaveCsv', () => {
 
   it('stores sales tax as integer cents', () => {
     const db = createTestDb()
-    importWaveCsv(db as any, makeCsv(makeRow({ waveId: 'w1', amount: '100.00', salesTaxAmount: '15.00' })))
+    importWaveCsv(db as any, makeCsv(makeRow({ waveId: 'w1', amount: '100.00', salesTaxAmount: '15.00', accountType: 'Expense' })))
     const lines = db.select().from(line).all()
     expect(lines[0]).toMatchObject({ amount: 10000, salesTaxAmount: 1500 })
   })
@@ -144,13 +144,13 @@ describe('importWaveCsv', () => {
   it('creates two lines for a split transaction', () => {
     const db = createTestDb()
     importWaveCsv(db as any, makeCsv(
-      makeRow({ waveId: 'w1', accountName: 'Rent', accountType: 'Expense', amount: '800.00' }),
-      makeRow({ waveId: 'w1', accountName: 'GST Payable', accountType: 'Liability', amount: '-800.00' }),
+      makeRow({ waveId: 'w1', accountName: 'Bank', accountType: 'Asset', amount: '800.00' }),
+      makeRow({ waveId: 'w1', accountName: 'Sales', accountType: 'Income', amount: '800.00' }),
     ))
     const lines = db.select().from(line).all()
     expect(lines).toHaveLength(2)
-    expect(lines[0].amount).toBe(80000)
-    expect(lines[1].amount).toBe(-80000)
+    expect(lines[0].amount).toBe(80000)   // Asset debit: 800 * +1
+    expect(lines[1].amount).toBe(-80000)  // Income credit: 800 * -1
   })
 
   it('links lines to the correct transaction and account', () => {
