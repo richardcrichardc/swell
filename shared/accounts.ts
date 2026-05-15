@@ -1,9 +1,17 @@
 export enum AccountType {
   Asset = 'Asset',
-  Equity = 'Equity',
-  Expense = 'Expense',
-  Income = 'Income',
   Liability = 'Liability',
+  Equity = 'Equity',
+  Income = 'Income',
+  Expense = 'Expense',
+}
+
+export const AccountTypeLabel: Record<AccountType, string> = {
+  [AccountType.Asset]: 'Assets',
+  [AccountType.Liability]: 'Liabilities',
+  [AccountType.Equity]: 'Equity',
+  [AccountType.Income]: 'Income',
+  [AccountType.Expense]: 'Expenses',
 }
 
 // +1 = debit-normal (positive amount = increase), -1 = credit-normal

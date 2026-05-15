@@ -1,6 +1,6 @@
 import { eq, and } from 'drizzle-orm'
 import { type BookDb, account, transaction, line } from './db/bookDb'
-import { AccountType, AccountTypeSign } from './accounts'
+import { AccountType, AccountTypeSign } from '../../shared/accounts'
 
 function parseCsvLine(csvLine: string): string[] {
   const fields: string[] = []
