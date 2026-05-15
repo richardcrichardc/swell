@@ -4,7 +4,7 @@ import { TRPCError } from '@trpc/server'
 import { router, protectedProcedure } from './trpc'
 import { books } from './db/schema'
 import { getBookDb, getKvp, setKvp } from './db/bookDb'
-import { importWaveCsv } from './waveImport'
+import { validateWaveCsv, importWaveCsv } from './waveImport'
 
 export const booksRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
@@ -48,6 +48,13 @@ export const booksRouter = router({
   create: protectedProcedure
     .input(z.object({ name: z.string().min(1, 'Name is required'), description: z.string().default(''), csvContent: z.string().optional() }))
     .mutation(({ input, ctx }) => {
+      if (input.csvContent) {
+        try {
+          validateWaveCsv(input.csvContent)
+        } catch (e) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: (e as Error).message })
+        }
+      }
       const book = ctx.db
         .insert(books)
         .values({ name: input.name, userId: ctx.user.id })

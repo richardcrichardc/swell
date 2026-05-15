@@ -1,5 +1,6 @@
 import { eq, and } from 'drizzle-orm'
 import { type BookDb, account } from './db/bookDb'
+import { AccountGroup } from './accounts'
 
 function parseCsvLine(line: string): string[] {
   const fields: string[] = []
@@ -32,6 +33,19 @@ function parseCsvLine(line: string): string[] {
   }
   fields.push(field)
   return fields
+}
+
+export function validateWaveCsv(csvContent: string): void {
+  const lines = csvContent.split(/\r?\n/)
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim()
+    if (!line) continue
+    const cols = parseCsvLine(line)
+    const group = cols[20]?.trim() ?? ''
+    if (group && !(Object.values(AccountGroup) as string[]).includes(group)) {
+      throw new Error(`Invalid account group "${group}" on row ${i + 1}`)
+    }
+  }
 }
 
 export function importWaveCsv(db: BookDb, csvContent: string): void {
