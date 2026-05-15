@@ -17,10 +17,17 @@ vi.mock('../lib/trpc', () => ({
     login: {
       useMutation: vi.fn(),
     },
+    useUtils: vi.fn(),
   },
 }))
 
 import { trpc } from '../lib/trpc'
+
+function mockUtils(books: { id: number; name: string }[] = []) {
+  vi.mocked(trpc.useUtils).mockReturnValue({
+    books: { list: { fetch: vi.fn().mockResolvedValue(books) } },
+  } as any)
+}
 
 function renderPage() {
   return render(
@@ -51,6 +58,7 @@ beforeEach(() => {
 
 describe('LoginPage', () => {
   it('renders email, password fields and sign in button', () => {
+    mockUtils()
     mockMutation()
     renderPage()
     expect(screen.getByLabelText('Email')).toBeInTheDocument()
@@ -60,6 +68,7 @@ describe('LoginPage', () => {
 
   it('calls login mutation with form values on submit', async () => {
     const user = userEvent.setup()
+    mockUtils()
     const mutate = mockMutation()
     renderPage()
 
@@ -70,8 +79,9 @@ describe('LoginPage', () => {
     expect(mutate).toHaveBeenCalledWith({ email: 'test@example.com', password: 'password123' })
   })
 
-  it('sets user in auth store and navigates home on success', async () => {
+  it('navigates to /books when there are no books', async () => {
     const user = userEvent.setup()
+    mockUtils([])
     mockMutation()
     renderPage()
 
@@ -81,22 +91,51 @@ describe('LoginPage', () => {
 
     expect(useAuthStore.getState().user).toEqual({ email: 'test@example.com', name: 'test' })
     expect(useAuthStore.getState().token).toBe('mock-token')
-    expect(mockNavigate).toHaveBeenCalledWith('/')
+    expect(mockNavigate).toHaveBeenCalledWith('/books')
+  })
+
+  it('navigates to /books when there are multiple books', async () => {
+    const user = userEvent.setup()
+    mockUtils([{ id: 1, name: 'Personal' }, { id: 2, name: 'Business' }])
+    mockMutation()
+    renderPage()
+
+    await user.type(screen.getByLabelText('Email'), 'test@example.com')
+    await user.type(screen.getByLabelText('Password'), 'password123')
+    await user.click(screen.getByRole('button', { name: 'Sign in' }))
+
+    expect(mockNavigate).toHaveBeenCalledWith('/books')
+  })
+
+  it('navigates directly to the book dashboard when there is only one book', async () => {
+    const user = userEvent.setup()
+    mockUtils([{ id: 42, name: 'Personal' }])
+    mockMutation()
+    renderPage()
+
+    await user.type(screen.getByLabelText('Email'), 'test@example.com')
+    await user.type(screen.getByLabelText('Password'), 'password123')
+    await user.click(screen.getByRole('button', { name: 'Sign in' }))
+
+    expect(mockNavigate).toHaveBeenCalledWith('/books/42')
   })
 
   it('shows loading state while pending', () => {
+    mockUtils()
     mockMutation({ isPending: true })
     renderPage()
     expect(screen.getByRole('button', { name: 'Signing in…' })).toBeDisabled()
   })
 
   it('shows the error message returned by the server', () => {
+    mockUtils()
     mockMutation({ error: new Error('Invalid email or password') })
     renderPage()
     expect(screen.getByText('Invalid email or password')).toBeInTheDocument()
   })
 
   it('shows a clean message for validation errors', () => {
+    mockUtils()
     mockMutation({ error: new Error('Invalid email') })
     renderPage()
     expect(screen.getByText('Invalid email')).toBeInTheDocument()

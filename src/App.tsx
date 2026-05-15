@@ -4,6 +4,7 @@ import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import NotFoundPage from './pages/NotFoundPage'
+import AllBooksPage from './pages/AllBooksPage'
 import BookLayout from './components/BookLayout'
 import BookPage from './pages/BookPage'
 import ChartOfAccountsPage from './pages/ChartOfAccountsPage'
@@ -17,6 +18,7 @@ export default function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/books" element={<AllBooksPage />} />
         <Route path="/books/:id" element={<BookLayout />}>
           <Route index element={<BookPage />} />
           <Route path="accounts" element={<ChartOfAccountsPage />} />

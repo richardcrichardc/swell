@@ -9,11 +9,13 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const setAuth = useAuthStore((s) => s.setAuth)
   const navigate = useNavigate()
+  const utils = trpc.useUtils()
 
   const login = trpc.login.useMutation({
-    onSuccess: ({ user, token }) => {
+    onSuccess: async ({ user, token }) => {
       setAuth(user, token)
-      void navigate('/')
+      const books = await utils.books.list.fetch()
+      void navigate(books.length === 1 ? `/books/${books[0].id}` : '/books')
     },
   })
 

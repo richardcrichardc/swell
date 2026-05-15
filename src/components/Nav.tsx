@@ -18,21 +18,20 @@ export default function Nav() {
             <img src="/favicon.svg" alt="Swell logo" className="h-7 w-7" />
             Swell
           </Link>
-          <NavLink
-            to="/"
-            end
-            className={({ isActive }) =>
-              `text-sm font-medium transition-colors ${isActive ? 'text-blue-600' : 'text-gray-600 hover:text-gray-900'}`
-            }
-          >
-            Home
-          </NavLink>
         </div>
 
         <div className="flex items-center gap-3">
           {user ? (
             <>
               <span className="text-sm text-gray-600">{user.name}</span>
+              <NavLink
+                to="/books"
+                className={({ isActive }) =>
+                  `text-sm font-medium transition-colors ${isActive ? 'text-blue-600' : 'text-gray-600 hover:text-gray-900'}`
+                }
+              >
+                All Books
+              </NavLink>
               <button
                 onClick={handleLogout}
                 className="cursor-pointer text-sm font-medium text-gray-600 transition-colors hover:text-gray-900"
