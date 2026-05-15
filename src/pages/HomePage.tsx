@@ -69,6 +69,7 @@ function BooksView() {
       {dialogOpen && (
         <BookDialog
           title="New Book"
+          showImport
           isPending={createBook.isPending}
           error={createBook.error?.message}
           onSave={(data) => createBook.mutate(data)}

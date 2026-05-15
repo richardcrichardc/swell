@@ -45,7 +45,7 @@ export const booksRouter = router({
     }),
 
   create: protectedProcedure
-    .input(z.object({ name: z.string().min(1, 'Name is required'), description: z.string().default('') }))
+    .input(z.object({ name: z.string().min(1, 'Name is required'), description: z.string().default(''), csvContent: z.string().optional() }))
     .mutation(({ input, ctx }) => {
       const book = ctx.db
         .insert(books)
@@ -55,6 +55,9 @@ export const booksRouter = router({
       const bookDb = getBookDb(book.id)
       setKvp(bookDb, 'name', input.name)
       setKvp(bookDb, 'description', input.description)
+      if (input.csvContent) {
+        console.log(`Wave CSV import for book ${book.id}:\n${input.csvContent}`)
+      }
       return { id: book.id, name: book.name }
     }),
 })
