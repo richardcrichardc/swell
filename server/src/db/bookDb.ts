@@ -16,7 +16,13 @@ export const account = sqliteTable('account', {
   type: text('type').notNull(),
 })
 
-const bookSchema = { kvp, account }
+export const transaction = sqliteTable('transaction', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  date: text('date').notNull(),
+  description: text('description').notNull(),
+})
+
+const bookSchema = { kvp, account, transaction }
 export type BookDb = ReturnType<typeof openBookDb>
 
 const cache = new Map<number, BookDb>()
@@ -27,6 +33,7 @@ function openBookDb(bookId: number) {
   sqlite.pragma('journal_mode = WAL')
   sqlite.exec('CREATE TABLE IF NOT EXISTS kvp (key text PRIMARY KEY NOT NULL, value text NOT NULL)')
   sqlite.exec('CREATE TABLE IF NOT EXISTS account (id integer PRIMARY KEY AUTOINCREMENT NOT NULL, name text NOT NULL, "group" text NOT NULL, type text NOT NULL)')
+  sqlite.exec('CREATE TABLE IF NOT EXISTS "transaction" (id integer PRIMARY KEY AUTOINCREMENT NOT NULL, date text NOT NULL, description text NOT NULL)')
   return drizzle(sqlite, { schema: bookSchema })
 }
 

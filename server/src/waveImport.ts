@@ -1,5 +1,5 @@
 import { eq, and } from 'drizzle-orm'
-import { type BookDb, account } from './db/bookDb'
+import { type BookDb, account, transaction } from './db/bookDb'
 import { AccountGroup } from './accounts'
 
 function parseCsvLine(line: string): string[] {
@@ -50,24 +50,33 @@ export function validateWaveCsv(csvContent: string): void {
 
 export function importWaveCsv(db: BookDb, csvContent: string): void {
   const lines = csvContent.split(/\r?\n/)
+  const waveTransactionIds = new Map<string, number>()
 
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i].trim()
     if (!line) continue
 
     const cols = parseCsvLine(line)
-    const name = cols[2]?.trim() ?? ''
-    const group = cols[20]?.trim() ?? ''
-    const type = cols[21]?.trim() ?? ''
 
-    if (!name) continue
+    const accountName = cols[2]?.trim() ?? ''
+    const accountGroup = cols[20]?.trim() ?? ''
+    const accountType = cols[21]?.trim() ?? ''
 
-    const existing = db.select().from(account)
-      .where(and(eq(account.name, name), eq(account.group, group), eq(account.type, type)))
-      .get()
+    if (accountName) {
+      const existing = db.select().from(account)
+        .where(and(eq(account.name, accountName), eq(account.group, accountGroup), eq(account.type, accountType)))
+        .get()
+      if (!existing) {
+        db.insert(account).values({ name: accountName, group: accountGroup, type: accountType }).run()
+      }
+    }
 
-    if (!existing) {
-      db.insert(account).values({ name, group, type }).run()
+    const waveId = cols[0]?.trim() ?? ''
+    if (waveId && !waveTransactionIds.has(waveId)) {
+      const date = cols[1]?.trim() ?? ''
+      const description = cols[3]?.trim() ?? ''
+      const row = db.insert(transaction).values({ date, description }).returning().get()
+      waveTransactionIds.set(waveId, row.id)
     }
   }
 }
