@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuthStore } from '../store/useAuthStore'
 import { trpc } from '../lib/trpc'
+import BookDialog from '../components/BookDialog'
 
 export default function HomePage() {
   const user = useAuthStore((state) => state.user)
@@ -32,42 +33,22 @@ function BooksView() {
   const createBook = trpc.books.create.useMutation({
     onSuccess: () => {
       void utils.books.list.invalidate()
-      setName('')
+      setDialogOpen(false)
     },
   })
-  const [name, setName] = useState('')
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (name.trim()) {
-      createBook.mutate({ name: name.trim() })
-    }
-  }
+  const [dialogOpen, setDialogOpen] = useState(false)
 
   return (
     <main className="mx-auto max-w-2xl px-6 py-12">
-      <h1 className="text-3xl font-bold tracking-tight text-gray-900">Your Books</h1>
-
-      <form onSubmit={handleSubmit} className="mt-8 flex gap-3">
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Book name"
-          className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-        />
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold tracking-tight text-gray-900">Your Books</h1>
         <button
-          type="submit"
-          disabled={createBook.isPending || !name.trim()}
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+          onClick={() => setDialogOpen(true)}
+          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
         >
-          {createBook.isPending ? 'Adding…' : 'Add book'}
+          New Book
         </button>
-      </form>
-
-      {createBook.error && (
-        <p className="mt-2 text-sm text-red-600">{createBook.error.message}</p>
-      )}
+      </div>
 
       <ul className="mt-6 divide-y divide-gray-200 rounded-md border border-gray-200">
         {isLoading && (
@@ -84,6 +65,16 @@ function BooksView() {
           </li>
         ))}
       </ul>
+
+      {dialogOpen && (
+        <BookDialog
+          title="New Book"
+          isPending={createBook.isPending}
+          error={createBook.error?.message}
+          onSave={(data) => createBook.mutate(data)}
+          onClose={() => setDialogOpen(false)}
+        />
+      )}
     </main>
   )
 }

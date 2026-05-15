@@ -10,7 +10,7 @@ vi.mock('../lib/trpc', () => ({
       get: {
         useQuery: vi.fn(),
       },
-      setDescription: {
+      update: {
         useMutation: vi.fn(),
       },
     },
@@ -19,9 +19,9 @@ vi.mock('../lib/trpc', () => ({
 
 import { trpc } from '../lib/trpc'
 
-function mockBook(data: { id: number; name: string; description: string | null } | undefined, overrides: { isLoading?: boolean; error?: object | null } = {}) {
+function mockBook(data: { id: number; name: string | null; description: string | null } | undefined, overrides: { isLoading?: boolean; error?: object | null } = {}) {
   vi.mocked(trpc.useUtils).mockReturnValue({ books: { get: { invalidate: vi.fn() } } } as any)
-  vi.mocked(trpc.books.setDescription.useMutation).mockReturnValue({ mutate: vi.fn(), isPending: false, error: null } as any)
+  vi.mocked(trpc.books.update.useMutation).mockReturnValue({ mutate: vi.fn(), isPending: false, error: null } as any)
   vi.mocked(trpc.books.get.useQuery).mockReturnValue({
     isLoading: false,
     data,

@@ -29,8 +29,8 @@ export const booksRouter = router({
       return { id: book.id, name, description }
     }),
 
-  setDescription: protectedProcedure
-    .input(z.object({ id: z.number(), description: z.string() }))
+  update: protectedProcedure
+    .input(z.object({ id: z.number(), name: z.string().min(1, 'Name is required'), description: z.string() }))
     .mutation(async ({ input, ctx }) => {
       const book = await ctx.db.query.books.findFirst({
         where: and(eq(books.id, input.id), eq(books.userId, ctx.user.id)),
@@ -38,18 +38,23 @@ export const booksRouter = router({
       if (!book) {
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Book not found' })
       }
-      setKvp(getBookDb(book.id), 'description', input.description)
+      ctx.db.update(books).set({ name: input.name }).where(eq(books.id, input.id)).run()
+      const bookDb = getBookDb(book.id)
+      setKvp(bookDb, 'name', input.name)
+      setKvp(bookDb, 'description', input.description)
     }),
 
   create: protectedProcedure
-    .input(z.object({ name: z.string().min(1, 'Name is required') }))
+    .input(z.object({ name: z.string().min(1, 'Name is required'), description: z.string().default('') }))
     .mutation(({ input, ctx }) => {
       const book = ctx.db
         .insert(books)
         .values({ name: input.name, userId: ctx.user.id })
         .returning()
         .get()
-      setKvp(getBookDb(book.id), 'name', input.name)
+      const bookDb = getBookDb(book.id)
+      setKvp(bookDb, 'name', input.name)
+      setKvp(bookDb, 'description', input.description)
       return { id: book.id, name: book.name }
     }),
 })
