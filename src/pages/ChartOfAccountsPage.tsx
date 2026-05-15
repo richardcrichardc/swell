@@ -11,16 +11,16 @@ export default function ChartOfAccountsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900">Chart of Accounts</h1>
+      <h1 className="text-3xl font-bold tracking-tight text-gray-900">Chart of Accounts</h1>
       {Object.values(AccountType).map((type) => {
         const group = accounts?.filter((a) => a.type === type) ?? []
         if (group.length === 0) return null
         return (
           <div key={type} className="mt-8">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500">{AccountTypeLabel[type]}</h2>
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">{AccountTypeLabel[type]}</h2>
             <div className="mt-2">
               {group.map((a) => (
-                <div key={a.id} className="py-1 pl-4 text-sm">{a.name}</div>
+                <div key={a.id} className="py-1 pl-4">{a.name}</div>
               ))}
             </div>
           </div>
