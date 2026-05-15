@@ -62,7 +62,7 @@ function BooksView() {
           isPending={createBook.isPending}
           error={createBook.error?.message}
           onSave={(data) => createBook.mutate(data)}
-          onClose={() => setDialogOpen(false)}
+          onClose={() => { setDialogOpen(false); createBook.reset() }}
         />
       )}
     </main>
