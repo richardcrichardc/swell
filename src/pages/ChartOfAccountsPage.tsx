@@ -18,22 +18,11 @@ export default function ChartOfAccountsPage() {
         return (
           <div key={type} className="mt-8">
             <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500">{AccountTypeLabel[type]}</h2>
-            <table className="mt-2 w-full text-sm">
-              <thead>
-                <tr className="border-b text-left text-gray-500">
-                  <th className="pb-2 font-medium">Name</th>
-                  <th className="pb-2 font-medium">Description</th>
-                </tr>
-              </thead>
-              <tbody>
-                {group.map((a) => (
-                  <tr key={a.id} className="border-b border-gray-100">
-                    <td className="py-2">{a.name}</td>
-                    <td className="py-2 text-gray-600">{a.description}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="mt-2">
+              {group.map((a) => (
+                <div key={a.id} className="py-1 pl-4 text-sm">{a.name}</div>
+              ))}
+            </div>
           </div>
         )
       })}

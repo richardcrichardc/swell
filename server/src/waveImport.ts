@@ -83,16 +83,15 @@ export function importWaveCsv(db: BookDb, csvContent: string): void {
 
     const accountName = cols[2]?.trim() ?? ''
     const accountType = cols[20]?.trim() ?? ''
-    const accountDescription = cols[21]?.trim() ?? ''
 
     let accountId: number
     const existingAccount = db.select().from(account)
-      .where(and(eq(account.name, accountName), eq(account.type, accountType), eq(account.description, accountDescription)))
+      .where(and(eq(account.name, accountName), eq(account.type, accountType)))
       .get()
     if (existingAccount) {
       accountId = existingAccount.id
     } else {
-      const inserted = db.insert(account).values({ name: accountName, type: accountType, description: accountDescription }).returning().get()
+      const inserted = db.insert(account).values({ name: accountName, type: accountType }).returning().get()
       accountId = inserted.id
     }
 
