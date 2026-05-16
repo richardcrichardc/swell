@@ -5,6 +5,12 @@ function formatAmount(cents: number): string {
   return (cents / 100).toFixed(2)
 }
 
+function formatDate(iso: string): string {
+  const [year, month, day] = iso.split('-')
+  const monthName = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][Number(month) - 1]
+  return `${Number(day)}-${monthName}-${year}`
+}
+
 export default function JournalPage() {
   const { id } = useParams<{ id: string }>()
   const bookId = Number(id)
@@ -30,7 +36,7 @@ export default function JournalPage() {
           {transactions?.map((txn) => (
             <>
               <tr key={txn.id} className="border-t border-gray-200">
-                <td className="pt-2 pb-0.5 pr-4 text-gray-500">{txn.date}</td>
+                <td className="pt-2 pb-0.5 pr-4 text-gray-500">{formatDate(txn.date)}</td>
                 <td className="pt-2 pb-0.5 text-gray-900 font-medium" colSpan={5}>{txn.description}</td>
               </tr>
               {txn.lines.map((l) => (
