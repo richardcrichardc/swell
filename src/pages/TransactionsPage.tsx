@@ -16,14 +16,14 @@ function formatDate(iso: string): string {
 export default function JournalPage() {
   const { id } = useParams<{ id: string }>()
   const bookId = Number(id)
-  const { data: transactions, isLoading } = trpc.books.journal.useQuery({ id: bookId })
+  const { data: transactions, isLoading } = trpc.books.transactions.useQuery({ id: bookId })
   const [editingTxnId, setEditingTxnId] = useState<number | null>(null)
 
   if (isLoading) return <p className="text-sm text-gray-500">Loading…</p>
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900">Journal</h1>
+      <h1 className="text-2xl font-bold text-gray-900">Transactions</h1>
       <table className="mt-6 w-full text-sm">
         <thead>
           <tr className="text-xs text-gray-400 border-b border-gray-200">
