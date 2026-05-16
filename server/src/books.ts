@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { eq, asc, and } from 'drizzle-orm'
+import { eq, asc, and, count } from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
 import { router, protectedProcedure } from './trpc'
 import { books } from './db/schema'
@@ -53,19 +53,39 @@ export const booksRouter = router({
       })
       if (!book) throw new TRPCError({ code: 'NOT_FOUND', message: 'Book not found' })
       const bookDb = getBookDb(book.id)
-      return bookDb.select().from(account).orderBy(asc(account.type), asc(account.sortOrder), asc(account.name)).all()
+      return bookDb
+        .select({ id: account.id, name: account.name, type: account.type, sortOrder: account.sortOrder, lineCount: count(line.id) })
+        .from(account)
+        .leftJoin(line, eq(line.accountId, account.id))
+        .groupBy(account.id)
+        .orderBy(asc(account.type), asc(account.sortOrder), asc(account.name))
+        .all()
+        .map(({ lineCount, ...rest }) => ({ ...rest, hasTransactions: lineCount > 0 }))
     }),
 
   updateAccounts: protectedProcedure
-    .input(z.object({ bookId: z.number(), updates: z.array(z.object({ id: z.number(), name: z.string().min(1), sortOrder: z.number() })) }))
+    .input(z.object({
+      bookId: z.number(),
+      updates: z.array(z.object({ id: z.number().optional(), type: z.string().optional(), name: z.string().min(1), sortOrder: z.number() })),
+      deletions: z.array(z.number()).default([]),
+    }))
     .mutation(async ({ input, ctx }) => {
       const book = await ctx.db.query.books.findFirst({
         where: and(eq(books.id, input.bookId), eq(books.userId, ctx.user.id)),
       })
       if (!book) throw new TRPCError({ code: 'NOT_FOUND', message: 'Book not found' })
       const bookDb = getBookDb(book.id)
-      for (const { id, name, sortOrder } of input.updates) {
-        bookDb.update(account).set({ name, sortOrder }).where(eq(account.id, id)).run()
+      for (const accountId of input.deletions) {
+        const hasLines = bookDb.select().from(line).where(eq(line.accountId, accountId)).get()
+        if (hasLines) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Account has transactions and cannot be deleted' })
+        bookDb.delete(account).where(eq(account.id, accountId)).run()
+      }
+      for (const { id, type, name, sortOrder } of input.updates) {
+        if (id == null) {
+          bookDb.insert(account).values({ name, type: type!, sortOrder }).run()
+        } else {
+          bookDb.update(account).set({ name, sortOrder }).where(eq(account.id, id)).run()
+        }
       }
     }),
 
