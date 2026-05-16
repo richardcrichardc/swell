@@ -10,7 +10,7 @@ export default function BookLayout() {
   return (
     <div className="flex">
       <aside className="w-52 shrink-0 border-r border-gray-200 px-3 py-6" style={{ minHeight: 'calc(100vh - 4rem)' }}>
-<nav className="flex flex-col gap-1">
+        <nav className="flex flex-col gap-1">
           <NavLink to={`/books/${id}`} end className={sideNavClass}>Dashboard</NavLink>
           <NavLink to={`/books/${id}/accounts`} className={sideNavClass}>Chart of Accounts</NavLink>
           <NavLink to={`/books/${id}/journal`} className={sideNavClass}>Journal</NavLink>

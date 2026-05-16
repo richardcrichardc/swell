@@ -146,7 +146,7 @@ export default function ChartOfAccountsPage() {
   return (
     <div>
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight text-gray-900">Chart of Accounts</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Chart of Accounts</h1>
         <div className="flex gap-2">
           {editing ? (
             <>

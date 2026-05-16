@@ -1,12 +1,30 @@
-import { Link, NavLink, useNavigate } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { Link, NavLink, useMatch, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/useAuthStore'
+import { trpc } from '../lib/trpc'
 
 export default function Nav() {
   const { user, logout } = useAuthStore()
   const navigate = useNavigate()
+  const bookMatch = useMatch('/books/:id/*')
+  const bookId = bookMatch ? Number(bookMatch.params.id) : null
+  const { data: book } = trpc.books.get.useQuery({ id: bookId! }, { enabled: bookId != null })
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const handleLogout = () => {
     logout()
+    setMenuOpen(false)
     void navigate('/')
   }
 
@@ -22,23 +40,33 @@ export default function Nav() {
 
         <div className="flex items-center gap-3">
           {user ? (
-            <>
-              <span className="text-sm text-gray-600">{user.name}</span>
-              <NavLink
-                to="/books"
-                className={({ isActive }) =>
-                  `text-sm font-medium transition-colors ${isActive ? 'text-blue-600' : 'text-gray-600 hover:text-gray-900'}`
-                }
-              >
-                All Books
-              </NavLink>
+            <div ref={menuRef} className="relative">
               <button
-                onClick={handleLogout}
-                className="cursor-pointer text-sm font-medium text-gray-600 transition-colors hover:text-gray-900"
+                onClick={() => setMenuOpen((o) => !o)}
+                className="flex items-center gap-1 text-sm font-medium text-gray-900 hover:text-gray-600"
               >
-                Logout
+                {book?.name ?? 'No book selected'}
+                <span className="text-gray-400">▾</span>
               </button>
-            </>
+              {menuOpen && (
+                <div className="absolute right-0 top-full mt-2 w-48 rounded-md border border-gray-200 bg-white py-1 shadow-lg">
+                  <div className="border-b border-gray-100 px-4 py-2 text-sm text-gray-500">{user.name}</div>
+                  <NavLink
+                    to="/books"
+                    onClick={() => setMenuOpen(false)}
+                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  >
+                    All Books
+                  </NavLink>
+                  <button
+                    onClick={handleLogout}
+                    className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                  >
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
           ) : (
             <>
               <NavLink
