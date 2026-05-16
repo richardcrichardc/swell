@@ -3,14 +3,11 @@ import { describe, it, expect } from 'vitest'
 import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { validateWaveCsv, importWaveCsv } from '../waveImport'
-import { account, transaction, line } from '../db/bookDb'
+import { account, transaction, line, applyBookSchema } from '../db/bookDb'
 
 function createTestDb() {
   const sqlite = new Database(':memory:')
-  sqlite.exec('CREATE TABLE kvp (key text PRIMARY KEY NOT NULL, value text NOT NULL)')
-  sqlite.exec('CREATE TABLE account (id integer PRIMARY KEY AUTOINCREMENT NOT NULL, name text NOT NULL, type text NOT NULL, sort_order integer NOT NULL)')
-  sqlite.exec('CREATE TABLE "transaction" (id integer PRIMARY KEY AUTOINCREMENT NOT NULL, date text NOT NULL, description text NOT NULL)')
-  sqlite.exec('CREATE TABLE line (id integer PRIMARY KEY AUTOINCREMENT NOT NULL, transaction_id integer NOT NULL, account_id integer NOT NULL, description text NOT NULL, amount integer NOT NULL, sales_tax_amount integer)')
+  applyBookSchema(sqlite)
   return drizzle(sqlite)
 }
 

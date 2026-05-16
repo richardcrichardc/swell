@@ -36,14 +36,18 @@ export type BookDb = ReturnType<typeof openBookDb>
 
 const cache = new Map<number, BookDb>()
 
-function openBookDb(bookId: number) {
-  mkdirSync('./data/books', { recursive: true })
-  const sqlite = new Database(`./data/books/book${bookId}.db`)
-  sqlite.pragma('journal_mode = WAL')
+export function applyBookSchema(sqlite: InstanceType<typeof Database>) {
   sqlite.exec('CREATE TABLE IF NOT EXISTS kvp (key text PRIMARY KEY NOT NULL, value text NOT NULL)')
   sqlite.exec('CREATE TABLE IF NOT EXISTS account (id integer PRIMARY KEY AUTOINCREMENT NOT NULL, name text NOT NULL, type text NOT NULL, sort_order integer NOT NULL)')
   sqlite.exec('CREATE TABLE IF NOT EXISTS "transaction" (id integer PRIMARY KEY AUTOINCREMENT NOT NULL, date text NOT NULL, description text NOT NULL)')
   sqlite.exec('CREATE TABLE IF NOT EXISTS line (id integer PRIMARY KEY AUTOINCREMENT NOT NULL, transaction_id integer NOT NULL, account_id integer NOT NULL, description text NOT NULL, amount integer NOT NULL, sales_tax_amount integer)')
+}
+
+function openBookDb(bookId: number) {
+  mkdirSync('./data/books', { recursive: true })
+  const sqlite = new Database(`./data/books/book${bookId}.db`)
+  sqlite.pragma('journal_mode = WAL')
+  applyBookSchema(sqlite)
   return drizzle(sqlite, { schema: bookSchema })
 }
 
