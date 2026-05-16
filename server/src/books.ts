@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { eq, asc, and, count } from 'drizzle-orm'
+import { eq, asc, and, count, inArray } from 'drizzle-orm'
 import { TRPCError } from '@trpc/server'
 import { router, protectedProcedure } from './trpc'
 import { books } from './db/schema'
@@ -119,6 +119,75 @@ export const booksRouter = router({
         linesByTxn.set(l.transactionId, arr)
       }
       return txns.map(txn => ({ ...txn, lines: linesByTxn.get(txn.id) ?? [] }))
+    }),
+
+  getTransaction: protectedProcedure
+    .input(z.object({ bookId: z.number(), transactionId: z.number() }))
+    .query(async ({ input, ctx }) => {
+      const book = await ctx.db.query.books.findFirst({
+        where: and(eq(books.id, input.bookId), eq(books.userId, ctx.user.id)),
+      })
+      if (!book) throw new TRPCError({ code: 'NOT_FOUND', message: 'Book not found' })
+      const bookDb = getBookDb(book.id)
+      const txn = bookDb.select().from(transaction).where(eq(transaction.id, input.transactionId)).get()
+      if (!txn) throw new TRPCError({ code: 'NOT_FOUND', message: 'Transaction not found' })
+      const lines = bookDb.select({
+        id: line.id,
+        accountId: line.accountId,
+        accountType: account.type,
+        accountName: account.name,
+        description: line.description,
+        amount: line.amount,
+      }).from(line).leftJoin(account, eq(line.accountId, account.id))
+        .where(eq(line.transactionId, input.transactionId)).all()
+        .map(({ amount, ...rest }) => ({
+          ...rest,
+          debit: amount > 0 ? amount : null,
+          credit: amount < 0 ? Math.abs(amount) : null,
+        }))
+      return { ...txn, lines }
+    }),
+
+  updateTransaction: protectedProcedure
+    .input(z.object({
+      bookId: z.number(),
+      transactionId: z.number(),
+      date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD').refine(s => !isNaN(Date.parse(s)), 'Invalid date'),
+      description: z.string().min(1, 'Description is required'),
+      lines: z.array(z.object({
+        id: z.number().optional(),
+        accountId: z.number(),
+        description: z.string(),
+        amount: z.number().int(),
+      })).min(2, 'A transaction must have at least two lines')
+        .refine(ls => ls.reduce((sum, l) => sum + l.amount, 0) === 0, 'Transaction does not balance'),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const book = await ctx.db.query.books.findFirst({
+        where: and(eq(books.id, input.bookId), eq(books.userId, ctx.user.id)),
+      })
+      if (!book) throw new TRPCError({ code: 'NOT_FOUND', message: 'Book not found' })
+      const bookDb = getBookDb(book.id)
+      const txn = bookDb.select().from(transaction).where(eq(transaction.id, input.transactionId)).get()
+      if (!txn) throw new TRPCError({ code: 'NOT_FOUND', message: 'Transaction not found' })
+      const accountIds = input.lines.map(l => l.accountId)
+      const foundAccounts = bookDb.select({ id: account.id }).from(account).where(inArray(account.id, accountIds)).all()
+      const foundIds = new Set(foundAccounts.map(a => a.id))
+      const missing = accountIds.find(id => !foundIds.has(id))
+      if (missing != null) throw new TRPCError({ code: 'BAD_REQUEST', message: `Account ${missing} not found in this book` })
+      bookDb.update(transaction).set({ date: input.date, description: input.description }).where(eq(transaction.id, input.transactionId)).run()
+      const existingLines = bookDb.select({ id: line.id }).from(line).where(eq(line.transactionId, input.transactionId)).all()
+      const keptIds = new Set(input.lines.map(l => l.id).filter(id => id != null))
+      for (const { id } of existingLines) {
+        if (!keptIds.has(id)) bookDb.delete(line).where(eq(line.id, id)).run()
+      }
+      for (const l of input.lines) {
+        if (l.id != null) {
+          bookDb.update(line).set({ accountId: l.accountId, description: l.description, amount: l.amount }).where(eq(line.id, l.id)).run()
+        } else {
+          bookDb.insert(line).values({ transactionId: input.transactionId, accountId: l.accountId, description: l.description, amount: l.amount }).run()
+        }
+      }
     }),
 
   create: protectedProcedure

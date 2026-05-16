@@ -5,7 +5,7 @@ import { booksRouter } from '../books'
 // Mock drizzle-orm operators so they don't throw when passed fake column objects
 vi.mock('drizzle-orm', async (importOriginal) => {
   const actual = await importOriginal()
-  return { ...actual, eq: vi.fn(), asc: vi.fn(), and: vi.fn(), count: vi.fn() }
+  return { ...actual, eq: vi.fn(), asc: vi.fn(), and: vi.fn(), count: vi.fn(), inArray: vi.fn() }
 })
 
 vi.mock('../db/bookDb', () => ({
@@ -19,10 +19,15 @@ vi.mock('../db/bookDb', () => ({
 
 import { getBookDb, getKvp } from '../db/bookDb'
 
-function makeBookDb({ accountRows = [] as any[], lineExists = false } = {}) {
+function makeBookDb({ accountRows = [] as any[], lineExists = false, txnRow = undefined as any, existingLineIds = [] as any[] } = {}) {
   const run = vi.fn()
-  const get = vi.fn().mockReturnValue(lineExists ? { id: 1 } : undefined)
-  const all = vi.fn().mockReturnValue(accountRows)
+  const get = vi.fn().mockReturnValue(txnRow !== undefined ? txnRow : (lineExists ? { id: 1 } : undefined))
+  const all = vi.fn()
+  if (txnRow !== undefined) {
+    all.mockReturnValueOnce(accountRows).mockReturnValue(existingLineIds)
+  } else {
+    all.mockReturnValue(accountRows)
+  }
   const chain: any = {
     from: vi.fn().mockReturnThis(),
     where: vi.fn().mockReturnThis(),
@@ -236,5 +241,139 @@ describe('books.updateAccounts', () => {
   it('throws UNAUTHORIZED when not authenticated', async () => {
     const caller = createCaller()
     await expect(caller.updateAccounts({ bookId: 1, updates: [] })).rejects.toMatchObject({ code: 'UNAUTHORIZED' })
+  })
+})
+
+describe('books.getTransaction', () => {
+  it('returns transaction with debit/credit lines', async () => {
+    const bookDb = makeBookDb({
+      txnRow: { id: 1, date: '2024-01-15', description: 'Test' },
+      accountRows: [
+        { id: 1, accountId: 10, accountType: 'Asset', accountName: 'Cash', description: 'line 1', amount: 500 },
+        { id: 2, accountId: 20, accountType: 'Income', accountName: 'Revenue', description: 'line 2', amount: -500 },
+      ],
+    })
+    vi.mocked(getBookDb).mockReturnValue(bookDb as any)
+    const caller = createCaller({ ctxUser: { id: 1 }, foundBook: { id: 1, userId: 1 } })
+    const result = await caller.getTransaction({ bookId: 1, transactionId: 1 })
+    expect(result).toEqual({
+      id: 1, date: '2024-01-15', description: 'Test',
+      lines: [
+        { id: 1, accountId: 10, accountType: 'Asset', accountName: 'Cash', description: 'line 1', debit: 500, credit: null },
+        { id: 2, accountId: 20, accountType: 'Income', accountName: 'Revenue', description: 'line 2', debit: null, credit: 500 },
+      ],
+    })
+  })
+
+  it('throws NOT_FOUND when transaction does not exist', async () => {
+    const bookDb = makeBookDb({ txnRow: null })
+    vi.mocked(getBookDb).mockReturnValue(bookDb as any)
+    const caller = createCaller({ ctxUser: { id: 1 }, foundBook: { id: 1, userId: 1 } })
+    await expect(caller.getTransaction({ bookId: 1, transactionId: 99 })).rejects.toMatchObject({ code: 'NOT_FOUND' })
+  })
+
+  it('throws NOT_FOUND when book does not exist', async () => {
+    const caller = createCaller({ ctxUser: { id: 1 }, foundBook: null })
+    await expect(caller.getTransaction({ bookId: 99, transactionId: 1 })).rejects.toMatchObject({ code: 'NOT_FOUND' })
+  })
+
+  it('throws UNAUTHORIZED when not authenticated', async () => {
+    const caller = createCaller()
+    await expect(caller.getTransaction({ bookId: 1, transactionId: 1 })).rejects.toMatchObject({ code: 'UNAUTHORIZED' })
+  })
+})
+
+describe('books.updateTransaction', () => {
+  const validInput = {
+    bookId: 1,
+    transactionId: 1,
+    date: '2024-01-15',
+    description: 'Test transaction',
+    lines: [
+      { id: 1, accountId: 10, description: 'line 1', amount: 500 },
+      { id: 2, accountId: 20, description: 'line 2', amount: -500 },
+    ],
+  }
+
+  it('updates the transaction and its lines', async () => {
+    const bookDb = makeBookDb({
+      txnRow: { id: 1 },
+      existingLineIds: [{ id: 1 }, { id: 2 }],
+      accountRows: [{ id: 10 }, { id: 20 }],
+    })
+    vi.mocked(getBookDb).mockReturnValue(bookDb as any)
+    const caller = createCaller({ ctxUser: { id: 1 }, foundBook: { id: 1, userId: 1 } })
+    await caller.updateTransaction(validInput)
+    expect(bookDb.update).toHaveBeenCalled()
+    expect(bookDb._chain.set).toHaveBeenCalledWith({ date: '2024-01-15', description: 'Test transaction' })
+  })
+
+  it('deletes lines removed from the transaction', async () => {
+    const bookDb = makeBookDb({
+      txnRow: { id: 1 },
+      existingLineIds: [{ id: 1 }, { id: 2 }, { id: 3 }],
+      accountRows: [{ id: 10 }, { id: 20 }],
+    })
+    vi.mocked(getBookDb).mockReturnValue(bookDb as any)
+    const caller = createCaller({ ctxUser: { id: 1 }, foundBook: { id: 1, userId: 1 } })
+    await caller.updateTransaction(validInput)
+    expect(bookDb.delete).toHaveBeenCalled()
+  })
+
+  it('throws BAD_REQUEST when lines do not balance', async () => {
+    const caller = createCaller({ ctxUser: { id: 1 }, foundBook: { id: 1, userId: 1 } })
+    await expect(caller.updateTransaction({
+      ...validInput,
+      lines: [
+        { id: 1, accountId: 10, description: '', amount: 500 },
+        { id: 2, accountId: 20, description: '', amount: -200 },
+      ],
+    })).rejects.toMatchObject({ code: 'BAD_REQUEST' })
+  })
+
+  it('throws BAD_REQUEST when fewer than two lines', async () => {
+    const caller = createCaller({ ctxUser: { id: 1 }, foundBook: { id: 1, userId: 1 } })
+    await expect(caller.updateTransaction({
+      ...validInput,
+      lines: [{ id: 1, accountId: 10, description: '', amount: 0 }],
+    })).rejects.toMatchObject({ code: 'BAD_REQUEST' })
+  })
+
+  it('throws BAD_REQUEST when date format is invalid', async () => {
+    const caller = createCaller({ ctxUser: { id: 1 }, foundBook: { id: 1, userId: 1 } })
+    await expect(caller.updateTransaction({ ...validInput, date: '15/01/2024' })).rejects.toMatchObject({ code: 'BAD_REQUEST' })
+  })
+
+  it('throws BAD_REQUEST when date is not a real date', async () => {
+    const caller = createCaller({ ctxUser: { id: 1 }, foundBook: { id: 1, userId: 1 } })
+    await expect(caller.updateTransaction({ ...validInput, date: '2024-13-01' })).rejects.toMatchObject({ code: 'BAD_REQUEST' })
+  })
+
+  it('throws BAD_REQUEST when an account does not exist in the book', async () => {
+    const bookDb = makeBookDb({
+      txnRow: { id: 1 },
+      existingLineIds: [{ id: 1 }, { id: 2 }],
+      accountRows: [{ id: 10 }], // account 20 is missing
+    })
+    vi.mocked(getBookDb).mockReturnValue(bookDb as any)
+    const caller = createCaller({ ctxUser: { id: 1 }, foundBook: { id: 1, userId: 1 } })
+    await expect(caller.updateTransaction(validInput)).rejects.toMatchObject({ code: 'BAD_REQUEST' })
+  })
+
+  it('throws NOT_FOUND when transaction does not exist', async () => {
+    const bookDb = makeBookDb({ txnRow: null })
+    vi.mocked(getBookDb).mockReturnValue(bookDb as any)
+    const caller = createCaller({ ctxUser: { id: 1 }, foundBook: { id: 1, userId: 1 } })
+    await expect(caller.updateTransaction(validInput)).rejects.toMatchObject({ code: 'NOT_FOUND' })
+  })
+
+  it('throws NOT_FOUND when book does not exist', async () => {
+    const caller = createCaller({ ctxUser: { id: 1 }, foundBook: null })
+    await expect(caller.updateTransaction(validInput)).rejects.toMatchObject({ code: 'NOT_FOUND' })
+  })
+
+  it('throws UNAUTHORIZED when not authenticated', async () => {
+    const caller = createCaller()
+    await expect(caller.updateTransaction(validInput)).rejects.toMatchObject({ code: 'UNAUTHORIZED' })
   })
 })

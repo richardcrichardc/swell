@@ -1,6 +1,7 @@
 import { eq, and } from 'drizzle-orm'
 import { type BookDb, account, transaction, line } from './db/bookDb'
 import { AccountType, AccountTypeSign } from '../../shared/accounts'
+import { parseCents } from '../../shared/money'
 
 function parseCsvLine(csvLine: string): string[] {
   const fields: string[] = []
@@ -33,10 +34,6 @@ function parseCsvLine(csvLine: string): string[] {
   }
   fields.push(field)
   return fields
-}
-
-function parseCents(value: string): number {
-  return Math.round(parseFloat(value) * 100)
 }
 
 function parseAccountType(value: string, rowNum: number): AccountType {

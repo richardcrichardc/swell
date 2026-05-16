@@ -17,7 +17,7 @@ export default function JournalPage() {
   const { id } = useParams<{ id: string }>()
   const bookId = Number(id)
   const { data: transactions, isLoading } = trpc.books.journal.useQuery({ id: bookId })
-  const [editingTxn, setEditingTxn] = useState<{ id: number; date: string; description: string } | null>(null)
+  const [editingTxnId, setEditingTxnId] = useState<number | null>(null)
 
   if (isLoading) return <p className="text-sm text-gray-500">Loading…</p>
 
@@ -43,7 +43,7 @@ export default function JournalPage() {
                 <td className="pt-2 pb-0.5 pr-4 text-gray-500">{formatDate(txn.date)}</td>
                 <td className="pt-2 pb-0.5 text-gray-900 font-medium" colSpan={5}>{txn.description}</td>
                 <td className="pt-2 pb-0.5 pl-6 align-top" rowSpan={txn.lines.length + 1}>
-                  <button onClick={() => setEditingTxn(txn)} className="inline-flex items-center rounded border border-gray-300 p-1 text-gray-500 hover:border-gray-400 hover:text-gray-700" title="Edit transaction">
+                  <button onClick={() => setEditingTxnId(txn.id)} className="inline-flex items-center rounded border border-gray-300 p-1 text-gray-500 hover:border-gray-400 hover:text-gray-700" title="Edit transaction">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
                       <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
                     </svg>
@@ -64,11 +64,12 @@ export default function JournalPage() {
           ))}
         </tbody>
       </table>
-      {editingTxn && (
+      {editingTxnId != null && (
         <TransactionDialog
-          transaction={editingTxn}
-          onSave={() => setEditingTxn(null)}
-          onClose={() => setEditingTxn(null)}
+          bookId={bookId}
+          transactionId={editingTxnId}
+          onSave={() => setEditingTxnId(null)}
+          onClose={() => setEditingTxnId(null)}
         />
       )}
     </div>
