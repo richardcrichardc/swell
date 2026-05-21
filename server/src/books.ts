@@ -5,8 +5,10 @@ import { router, protectedProcedure } from './trpc'
 import { books } from './db/schema'
 import { getBookDb, getKvp, setKvp, account, transaction, line } from './db/bookDb'
 import { validateWaveCsv, importWaveCsv } from './waveImport'
+import type { BooksRouter } from '../../shared/api'
+import { AccountType } from '../../shared/accounts'
 
-export const booksRouter = router({
+export const booksRouter: BooksRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
     const userBooks = await ctx.db.query.books.findMany({
       where: eq(books.userId, ctx.user.id),
@@ -60,7 +62,7 @@ export const booksRouter = router({
         .groupBy(account.id)
         .orderBy(asc(account.type), asc(account.sortOrder), asc(account.name))
         .all()
-        .map(({ lineCount, ...rest }) => ({ ...rest, hasTransactions: lineCount > 0 }))
+        .map(({ lineCount, type, ...rest }) => ({ ...rest, type: type as AccountType, hasTransactions: lineCount > 0 }))
     }),
 
   updateAccounts: protectedProcedure
@@ -107,8 +109,9 @@ export const booksRouter = router({
         amount: line.amount,
         salesTaxAmount: line.salesTaxAmount,
       }).from(line).leftJoin(account, eq(line.accountId, account.id)).all()
-        .map(({ amount, ...rest }) => ({
+        .map(({ amount, accountType, ...rest }) => ({
           ...rest,
+          accountType: accountType as AccountType | null,
           debit: amount > 0 ? amount : null,
           credit: amount < 0 ? Math.abs(amount) : null,
         }))
@@ -140,8 +143,9 @@ export const booksRouter = router({
         amount: line.amount,
       }).from(line).leftJoin(account, eq(line.accountId, account.id))
         .where(eq(line.transactionId, input.transactionId)).all()
-        .map(({ amount, ...rest }) => ({
+        .map(({ amount, accountType, ...rest }) => ({
           ...rest,
+          accountType: accountType as AccountType | null,
           debit: amount > 0 ? amount : null,
           credit: amount < 0 ? Math.abs(amount) : null,
         }))

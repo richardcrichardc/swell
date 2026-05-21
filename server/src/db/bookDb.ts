@@ -51,8 +51,6 @@ function openBookDb(bookId: number) {
   return drizzle(sqlite, { schema: bookSchema })
 }
 
-export function getKvp(db: BookDb, key: string): string | null
-export function getKvp(db: BookDb, key: string, defaultValue: string): string
 export function getKvp(db: BookDb, key: string, defaultValue?: string): string | null {
   const row = db.select().from(kvp).where(eq(kvp.key, key)).get()
   return row?.value ?? defaultValue ?? null

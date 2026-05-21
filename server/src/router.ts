@@ -2,9 +2,10 @@ import { z } from 'zod'
 import { router, publicProcedure, protectedProcedure } from './trpc'
 import { loginUser, registerUser } from './user'
 import { booksRouter } from './books'
+import type { AppRouter } from '../../shared/api'
 
-export const appRouter = router({
-  health: publicProcedure.query(() => ({ status: 'ok' })),
+export const appRouter: AppRouter = router({
+  health: publicProcedure.query(() => ({ status: 'ok' as const })),
 
   me: protectedProcedure.query(({ ctx }) => ({
     user: { email: ctx.user.email, name: ctx.user.name },
@@ -25,4 +26,3 @@ export const appRouter = router({
   books: booksRouter,
 })
 
-export type AppRouter = typeof appRouter

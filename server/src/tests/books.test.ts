@@ -1,10 +1,11 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { booksRouter } from '../books'
+import type * as DrizzleOrm from 'drizzle-orm'
 
 // Mock drizzle-orm operators so they don't throw when passed fake column objects
 vi.mock('drizzle-orm', async (importOriginal) => {
-  const actual = await importOriginal()
+  const actual = await importOriginal<typeof DrizzleOrm>()
   return { ...actual, eq: vi.fn(), asc: vi.fn(), and: vi.fn(), count: vi.fn(), inArray: vi.fn() }
 })
 
