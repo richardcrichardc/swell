@@ -8,7 +8,7 @@ import AllBooksPage from './pages/AllBooksPage'
 import BookLayout from './components/BookLayout'
 import BookPage from './pages/BookPage'
 import ChartOfAccountsPage from './pages/ChartOfAccountsPage'
-import TransactionsPage from './pages/TransactionsPage'
+import JournalPage from './pages/JournalPage'
 
 export default function App() {
   return (
@@ -22,7 +22,7 @@ export default function App() {
         <Route path="/books/:id" element={<BookLayout />}>
           <Route index element={<BookPage />} />
           <Route path="accounts" element={<ChartOfAccountsPage />} />
-          <Route path="transactions" element={<TransactionsPage />} />
+          <Route path="journal" element={<JournalPage />} />
         </Route>
         <Route path="*" element={<NotFoundPage />} />
       </Routes>

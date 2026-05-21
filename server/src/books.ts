@@ -91,7 +91,7 @@ export const booksRouter: BooksRouter = router({
       }
     }),
 
-  transactions: protectedProcedure
+  journal: protectedProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ input, ctx }) => {
       const book = await ctx.db.query.books.findFirst({

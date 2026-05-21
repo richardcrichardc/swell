@@ -30,7 +30,7 @@ export default function TransactionDialog({ bookId, transactionId, onSave, onClo
   const { data: accounts, isLoading: accountsLoading } = trpc.books.accounts.useQuery({ id: bookId })
   const updateTransaction = trpc.books.updateTransaction.useMutation({
     onSuccess: () => {
-      void utils.books.transactions.invalidate({ id: bookId })
+      void utils.books.journal.invalidate({ id: bookId })
       onSave()
     },
   })

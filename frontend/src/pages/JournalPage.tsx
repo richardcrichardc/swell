@@ -16,7 +16,7 @@ function formatDate(iso: string): string {
 export default function JournalPage() {
   const { id } = useParams<{ id: string }>()
   const bookId = Number(id)
-  const { data: transactions, isLoading } = trpc.books.transactions.useQuery({ id: bookId })
+  const { data: transactions, isLoading } = trpc.books.journal.useQuery({ id: bookId })
   const [editingTxnId, setEditingTxnId] = useState<number | null>(null)
   const [creating, setCreating] = useState(false)
 
@@ -25,7 +25,7 @@ export default function JournalPage() {
   return (
     <div>
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Transactions</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Journal</h1>
         <button onClick={() => setCreating(true)} className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700">
           Add Transaction
         </button>

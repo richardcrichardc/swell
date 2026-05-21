@@ -24,7 +24,7 @@ export type UpdateAccountInput = {
   sortOrder: number
 }
 
-// ── Transactions list (books.transactions) ────────────────────────────────────
+// ── Transactions list (books.journal) ────────────────────────────────────────
 
 export type TransactionLine = {
   id: number
@@ -98,7 +98,7 @@ export type BooksRecord = {
   update:             Mutation<{ id: number; name: string; description: string }, void>
   accounts:           Query<{ id: number }, Account[]>
   updateAccounts:     Mutation<{ bookId: number; updates: UpdateAccountInput[]; deletions?: number[] }, void>
-  transactions:       Query<{ id: number }, Transaction[]>
+  journal:            Query<{ id: number }, Transaction[]>
   getTransaction:     Query<{ bookId: number; transactionId: number }, TransactionDetail>
   updateTransaction:  Mutation<UpdateTransactionInput, { id: number }>
 }
