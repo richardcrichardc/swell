@@ -35,7 +35,7 @@ function mockBooks(books: { id: number; name: string }[] = [], overrides: { isPe
   } as any)
   vi.mocked(trpc.books.create.useMutation).mockImplementation((options) => {
     mutate.mockImplementation((input: { name: string; description: string }) => {
-      options?.onSuccess?.({ id: 99, name: input.name })
+      options?.onSuccess?.({ id: 99, name: input.name }, input, undefined, {} as any)
     })
     return { mutate, isPending: false, error: null, ...overrides } as any
   })

@@ -34,11 +34,9 @@ function mockMutation(overrides: { isPending?: boolean; error?: Error | null } =
   const mutate = vi.fn()
   vi.mocked(trpc.register.useMutation).mockImplementation((options) => {
     mutate.mockImplementation((input: { name: string; email: string; password: string }) => {
-      options?.onSuccess?.({ user: { email: input.email, name: input.name }, token: 'mock-token' })
+      options?.onSuccess?.({ user: { email: input.email, name: input.name }, token: 'mock-token' }, input, undefined, {} as any)
     })
-    return { mutate, isPending: false, error: null, ...overrides } as ReturnType<
-      typeof trpc.register.useMutation
-    >
+    return { mutate, isPending: false, error: null, ...overrides } as any
   })
   return mutate
 }
