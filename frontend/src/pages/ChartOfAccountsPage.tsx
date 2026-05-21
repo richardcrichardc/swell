@@ -16,7 +16,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { trpc } from '../lib/trpc'
-import { AccountType, AccountTypeLabel } from '../../shared/accounts'
+import { AccountType, AccountTypeLabel } from '../../../shared/accounts'
 
 type EditItem = { key: string; id?: number; name: string; hasTransactions?: boolean }
 

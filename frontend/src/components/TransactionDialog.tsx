@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { trpc } from '../lib/trpc'
-import { AccountType, AccountTypeLabel } from '../../shared/accounts'
-import { parseCents, formatCents } from '../../shared/money'
+import { AccountType, AccountTypeLabel } from '../../../shared/accounts'
+import { parseCents, formatCents } from '../../../shared/money'
 
 type EditLine = {
   key: string

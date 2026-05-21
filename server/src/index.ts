@@ -29,7 +29,7 @@ app.use(
 
 if (isProd) {
   const __dirname = dirname(fileURLToPath(import.meta.url))
-  const distPath = join(__dirname, '../../dist')
+  const distPath = join(__dirname, '../../frontend/dist')
   app.use(express.static(distPath))
   app.get('*', (_req, res) => {
     res.sendFile(join(distPath, 'index.html'))
