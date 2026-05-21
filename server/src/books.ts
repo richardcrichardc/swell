@@ -151,7 +151,7 @@ export const booksRouter = router({
   updateTransaction: protectedProcedure
     .input(z.object({
       bookId: z.number(),
-      transactionId: z.number(),
+      transactionId: z.number().optional(),
       date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD').refine(s => !isNaN(Date.parse(s)), 'Invalid date'),
       description: z.string().min(1, 'Description is required'),
       lines: z.array(z.object({
@@ -168,26 +168,34 @@ export const booksRouter = router({
       })
       if (!book) throw new TRPCError({ code: 'NOT_FOUND', message: 'Book not found' })
       const bookDb = getBookDb(book.id)
-      const txn = bookDb.select().from(transaction).where(eq(transaction.id, input.transactionId)).get()
-      if (!txn) throw new TRPCError({ code: 'NOT_FOUND', message: 'Transaction not found' })
       const accountIds = input.lines.map(l => l.accountId)
       const foundAccounts = bookDb.select({ id: account.id }).from(account).where(inArray(account.id, accountIds)).all()
       const foundIds = new Set(foundAccounts.map(a => a.id))
       const missing = accountIds.find(id => !foundIds.has(id))
       if (missing != null) throw new TRPCError({ code: 'BAD_REQUEST', message: `Account ${missing} not found in this book` })
-      bookDb.update(transaction).set({ date: input.date, description: input.description }).where(eq(transaction.id, input.transactionId)).run()
-      const existingLines = bookDb.select({ id: line.id }).from(line).where(eq(line.transactionId, input.transactionId)).all()
-      const keptIds = new Set(input.lines.map(l => l.id).filter(id => id != null))
-      for (const { id } of existingLines) {
-        if (!keptIds.has(id)) bookDb.delete(line).where(eq(line.id, id)).run()
+      let txnId: number
+      if (input.transactionId == null) {
+        const inserted = bookDb.insert(transaction).values({ date: input.date, description: input.description }).returning().get()
+        txnId = inserted.id
+      } else {
+        const existing = bookDb.select().from(transaction).where(eq(transaction.id, input.transactionId)).get()
+        if (!existing) throw new TRPCError({ code: 'NOT_FOUND', message: 'Transaction not found' })
+        bookDb.update(transaction).set({ date: input.date, description: input.description }).where(eq(transaction.id, input.transactionId)).run()
+        txnId = input.transactionId
+        const existingLines = bookDb.select({ id: line.id }).from(line).where(eq(line.transactionId, txnId)).all()
+        const keptIds = new Set(input.lines.map(l => l.id).filter(id => id != null))
+        for (const { id } of existingLines) {
+          if (!keptIds.has(id)) bookDb.delete(line).where(eq(line.id, id)).run()
+        }
       }
       for (const l of input.lines) {
         if (l.id != null) {
           bookDb.update(line).set({ accountId: l.accountId, description: l.description, amount: l.amount }).where(eq(line.id, l.id)).run()
         } else {
-          bookDb.insert(line).values({ transactionId: input.transactionId, accountId: l.accountId, description: l.description, amount: l.amount }).run()
+          bookDb.insert(line).values({ transactionId: txnId, accountId: l.accountId, description: l.description, amount: l.amount }).run()
         }
       }
+      return { id: txnId }
     }),
 
   create: protectedProcedure

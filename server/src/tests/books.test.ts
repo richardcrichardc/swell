@@ -361,7 +361,7 @@ describe('books.updateTransaction', () => {
   })
 
   it('throws NOT_FOUND when transaction does not exist', async () => {
-    const bookDb = makeBookDb({ txnRow: null })
+    const bookDb = makeBookDb({ txnRow: null, accountRows: [{ id: 10 }, { id: 20 }] })
     vi.mocked(getBookDb).mockReturnValue(bookDb as any)
     const caller = createCaller({ ctxUser: { id: 1 }, foundBook: { id: 1, userId: 1 } })
     await expect(caller.updateTransaction(validInput)).rejects.toMatchObject({ code: 'NOT_FOUND' })

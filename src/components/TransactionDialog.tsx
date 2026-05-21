@@ -14,7 +14,7 @@ type EditLine = {
 
 type Props = {
   bookId: number
-  transactionId: number
+  transactionId?: number
   onSave: () => void
   onClose: () => void
 }
@@ -23,7 +23,10 @@ let nextKey = 0
 
 export default function TransactionDialog({ bookId, transactionId, onSave, onClose }: Props) {
   const utils = trpc.useUtils()
-  const { data: txn, isLoading: txnLoading } = trpc.books.getTransaction.useQuery({ bookId, transactionId })
+  const { data: txn, isLoading: txnLoading } = trpc.books.getTransaction.useQuery(
+    { bookId, transactionId: transactionId! },
+    { enabled: transactionId != null },
+  )
   const { data: accounts, isLoading: accountsLoading } = trpc.books.accounts.useQuery({ id: bookId })
   const updateTransaction = trpc.books.updateTransaction.useMutation({
     onSuccess: () => {
@@ -32,10 +35,18 @@ export default function TransactionDialog({ bookId, transactionId, onSave, onClo
     },
   })
 
-  const [date, setDate] = useState('')
+  const today = new Date().toISOString().slice(0, 10)
+  const [date, setDate] = useState(transactionId == null ? today : '')
   const [description, setDescription] = useState('')
-  const [lines, setLines] = useState<EditLine[]>([])
-  const [initialized, setInitialized] = useState(false)
+  const [lines, setLines] = useState<EditLine[]>(() =>
+    transactionId == null
+      ? [
+          { key: `new-${nextKey++}`, accountId: null, description: '', debit: '', credit: '' },
+          { key: `new-${nextKey++}`, accountId: null, description: '', debit: '', credit: '' },
+        ]
+      : [],
+  )
+  const [initialized, setInitialized] = useState(transactionId == null)
 
   useEffect(() => {
     if (txn && !initialized) {
@@ -84,12 +95,12 @@ export default function TransactionDialog({ bookId, transactionId, onSave, onClo
     })
   }
 
-  const isLoading = txnLoading || accountsLoading
+  const isLoading = (transactionId != null && txnLoading) || accountsLoading
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="w-full max-w-2xl rounded-lg bg-white p-6 shadow-lg">
-        <h2 className="text-lg font-semibold text-gray-900">Edit Transaction</h2>
+        <h2 className="text-lg font-semibold text-gray-900">{transactionId == null ? 'New Transaction' : 'Edit Transaction'}</h2>
 
         {isLoading ? (
           <p className="mt-6 text-sm text-gray-500">Loading…</p>
