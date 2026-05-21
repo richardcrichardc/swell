@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { trpc } from '../lib/trpc'
 import TransactionDialog from '../components/TransactionDialog'
@@ -44,8 +44,8 @@ export default function JournalPage() {
         </thead>
         <tbody>
           {transactions?.map((txn) => (
-            <>
-              <tr key={txn.id} className="border-t border-gray-200">
+            <Fragment key={txn.id}>
+              <tr className="border-t border-gray-200">
                 <td className="pt-2 pb-0.5 pr-4 text-gray-500">{formatDate(txn.date)}</td>
                 <td className="pt-2 pb-0.5 text-gray-900 font-medium" colSpan={5}>{txn.description}</td>
                 <td className="pt-2 pb-0.5 pl-6 align-top" rowSpan={txn.lines.length + 1}>
@@ -66,7 +66,7 @@ export default function JournalPage() {
                   <td className="py-0.5 text-right tabular-nums">{l.credit != null ? formatAmount(l.credit) : ''}</td>
                 </tr>
               ))}
-            </>
+            </Fragment>
           ))}
         </tbody>
       </table>
