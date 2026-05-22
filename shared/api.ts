@@ -44,6 +44,19 @@ export type Transaction = {
   lines: TransactionLine[]
 }
 
+// ── Account transaction ledger (books.transactions) ──────────────────────────
+
+export type TransactionEntry = {
+  id: number           // line id
+  transactionId: number
+  date: string         // YYYY-MM-DD
+  description: string  // from transaction
+  memo: string         // from line
+  debit: number | null
+  credit: number | null
+  balance: number      // running balance in signed cents (positive = normal for account type)
+}
+
 // ── Transaction detail (books.getTransaction) ─────────────────────────────────
 
 export type TransactionDetailLine = {
@@ -99,6 +112,7 @@ export type BooksRecord = {
   accounts:           Query<{ id: number }, Account[]>
   updateAccounts:     Mutation<{ bookId: number; updates: UpdateAccountInput[]; deletions?: number[] }, void>
   journal:            Query<{ id: number }, Transaction[]>
+  transactions:       Query<{ id: number; accountId: number; page: number; latestFirst: boolean }, { entries: TransactionEntry[]; total: number }>
   getTransaction:     Query<{ bookId: number; transactionId: number }, TransactionDetail>
   updateTransaction:  Mutation<UpdateTransactionInput, { id: number }>
 }

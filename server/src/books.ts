@@ -6,7 +6,7 @@ import { books } from './db/schema'
 import { getBookDb, getKvp, setKvp, account, transaction, line } from './db/bookDb'
 import { validateWaveCsv, importWaveCsv } from './waveImport'
 import type { BooksRouter } from '../../shared/api'
-import { AccountType } from '../../shared/accounts'
+import { AccountType, AccountTypeSign } from '../../shared/accounts'
 
 export const booksRouter: BooksRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
@@ -122,6 +122,52 @@ export const booksRouter: BooksRouter = router({
         linesByTxn.set(l.transactionId, arr)
       }
       return txns.map(txn => ({ ...txn, lines: linesByTxn.get(txn.id) ?? [] }))
+    }),
+
+  transactions: protectedProcedure
+    .input(z.object({ id: z.number(), accountId: z.number(), page: z.number().int().min(1), latestFirst: z.boolean() }))
+    .query(async ({ input, ctx }) => {
+      const PAGE_SIZE = 20
+      const book = await ctx.db.query.books.findFirst({
+        where: and(eq(books.id, input.id), eq(books.userId, ctx.user.id)),
+      })
+      if (!book) throw new TRPCError({ code: 'NOT_FOUND', message: 'Book not found' })
+      const bookDb = getBookDb(book.id)
+      const acct = bookDb.select({ type: account.type }).from(account).where(eq(account.id, input.accountId)).get()
+      if (!acct) throw new TRPCError({ code: 'NOT_FOUND', message: 'Account not found' })
+      const sign = AccountTypeSign[acct.type as AccountType]
+      const rows = bookDb
+        .select({
+          id: line.id,
+          transactionId: line.transactionId,
+          date: transaction.date,
+          description: transaction.description,
+          memo: line.description,
+          amount: line.amount,
+        })
+        .from(line)
+        .innerJoin(transaction, eq(line.transactionId, transaction.id))
+        .where(eq(line.accountId, input.accountId))
+        .orderBy(asc(transaction.date), asc(transaction.id))
+        .all()
+      let balance = 0
+      const all = rows.map(row => {
+        balance += row.amount * sign
+        return {
+          id: row.id,
+          transactionId: row.transactionId,
+          date: row.date,
+          description: row.description,
+          memo: row.memo,
+          debit: row.amount > 0 ? row.amount : null,
+          credit: row.amount < 0 ? Math.abs(row.amount) : null,
+          balance,
+        }
+      })
+      const total = all.length
+      const ordered = input.latestFirst ? all.slice().reverse() : all
+      const entries = ordered.slice((input.page - 1) * PAGE_SIZE, input.page * PAGE_SIZE)
+      return { entries, total }
     }),
 
   getTransaction: protectedProcedure
